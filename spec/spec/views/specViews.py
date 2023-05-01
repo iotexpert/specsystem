@@ -49,13 +49,6 @@ def genCsv(request, outFileName, serializer, queryset):
         return response
     except BaseException as be: # pragma nocover
         formatError(be, "SPEC-SV28")
-    finally:
-        # Clean up the folder, no matter success or failure
-        try:
-            if tempFilePath.exists():
-                shutil.rmtree(tempFilePath)
-        except BaseException as be: # pragma nocover
-            pass
 
 class HelpFile(APIView):
     """
