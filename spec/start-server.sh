@@ -16,5 +16,5 @@ if [ -f /app/ext/config/settings_local.py ]; then
     cp /app/ext/config/settings_local.py /app/proj/
 fi
 
-gunicorn proj.wsgi --bind 0.0.0.0:8010 --workers 3 &
+gunicorn proj.wsgi --bind 0.0.0.0:8010 --workers 3 --timeout 60 &
 nginx -g "daemon off;"
