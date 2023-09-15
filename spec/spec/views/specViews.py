@@ -48,7 +48,7 @@ def genCsv(request, outFileName, serializer, queryset):
         response = FileResponse(open(tempFilePath/outFileName, 'rb'), filename=outFileName)
         return response
     except BaseException as be: # pragma nocover
-        formatError(be, "SPEC-SV28")
+        formatError(be, "SPEC-SV28")    
     finally:
         # Clean up the folder, no matter success or failure
         try:
