@@ -194,7 +194,7 @@
 
     <q-card-section class="q-pt-none row">
       <q-btn
-        v-show="isAdmin || props.username === username"
+        v-show="isAdmin || props.username === user_name"
         icon="save"
         color="primary"
         @click="saveUser()"
@@ -353,7 +353,7 @@ const props = defineProps({
 
 const store = useStore();
 const isAdmin = ref(computed(() => store.getters.isAdmin));
-const username = ref(computed(() => store.getters.username));
+const user_name = ref(computed(() => store.getters.username));
 const delegates = ref("");
 const delegates_for = ref([]);
 const in_process = ref([]);
