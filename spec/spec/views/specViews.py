@@ -1,6 +1,6 @@
 import csv
+import io
 import os
-import shutil
 import subprocess
 from django.conf import settings
 from django.db import transaction
@@ -15,7 +15,7 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 from subprocess import run
 
-from proj.util import IsSuperUser, IsSuperUserOrReadOnly
+from proj.util import IsSuperUser
 from ..services import jira
 from ..services.spec_route import specExtend, specReject, specSign, specSubmit
 from ..services.spec_create import specCreate, specImport, specRevise
@@ -31,31 +31,21 @@ def genCsv(request, outFileName, serializer, queryset):
     Generate a CSV file with the data from the array of dictionary entries
     Return the file as output.
     """
-    tempFilePath = Path(settings.TEMP_PDF) / str(request.user.username)
-    if tempFilePath.exists(): # pragma nocover
-        shutil.rmtree(tempFilePath)
     try:
-        os.makedirs(tempFilePath)
-        with open(tempFilePath/outFileName, 'w', newline='', encoding='utf-8') as f:
-            w = None
-            for r in queryset:
-                d = serializer.to_representation(r)
-                if not w:
-                    w = csv.DictWriter(f, d.keys())
-                    w.writeheader()
-                w.writerow(d)
+        f = io.StringIO()
+        w = None
+        for r in queryset:
+            d = serializer.to_representation(r)
+            if not w:
+                w = csv.DictWriter(f, d.keys())
+                w.writeheader()
+            w.writerow(d)
 
-        response = FileResponse(open(tempFilePath/outFileName, 'rb'), filename=outFileName)
+        f.seek(0)
+        response = FileResponse(io.BytesIO(f.read().encode('utf8')), filename=outFileName)
         return response
     except BaseException as be: # pragma nocover
-        formatError(be, "SPEC-SV28")    
-    finally:
-        # Clean up the folder, no matter success or failure
-        try:
-            if tempFilePath.exists():
-                shutil.rmtree(tempFilePath)
-        except BaseException as be: # pragma nocover
-            pass
+        formatError(be, "SPEC-SV28")
 
 class HelpFile(APIView):
     """
@@ -77,8 +67,8 @@ class HelpFile(APIView):
             raise ValidationError({
                 "errorCode": "SPEC-SV26", "error":
                 f"Valid help choices are: 'user' for the User Guide, 'admin' for the Admin Guide and 'design' for the High Level Design"})
-        
-        
+
+
         osPdfFileName = os.path.splitext(osFileName)[0]+'.pdf'
         if not Path(osPdfFileName).exists(): # pragma nocover
             p = run([settings.SOFFICE, '--norestore', '--safe-mode', '--view', '--convert-to', 'pdf', '--outdir', str(Path(osFileName).parent), osFileName]
@@ -99,7 +89,7 @@ class HelpFile(APIView):
                 return render(request, 'file_error_page.html', exc.detail, status=400)
 
 class ImportSpec(GenericAPIView):
-    """ 
+    """
     post:
     Used for initial import of specs to specified state with specified dates
 
@@ -134,7 +124,7 @@ class ImportSpec(GenericAPIView):
             formatError(be, "SPEC-SV24")
 
 class SpecList(GenericAPIView):
-    """ 
+    """
     get:
     spec/
     spec/<num>
@@ -174,17 +164,17 @@ class SpecList(GenericAPIView):
 
             if num is not None:
                 queryset = queryset.filter(num=num)
-            
-            if not request.GET.get('incl_obsolete'):                
+
+            if not request.GET.get('incl_obsolete'):
                 queryset = queryset.exclude(state='Obsolete')
-            queryset = queryset.order_by('num', 'ver')
+            queryset = queryset.order_by('num', 'ver').select_related()
 
             # If requested, return the entire data set in a csv file
             if request.GET.get('output_csv'):
                 return genCsv(request, 'spec_list.csv', SpecListSerializer(), queryset)
 
             # Generate paginated response
-            queryset = self.paginate_queryset(queryset)            
+            queryset = self.paginate_queryset(queryset)
             serializer = SpecListSerializer(queryset, many=True, context={'user':request.user})
             return self.get_paginated_response(serializer.data)
         except BaseException as be: # pragma: no cover
@@ -282,7 +272,7 @@ class SpecDetail(APIView):
                     raise ValidationError({"errorCode":"SPEC-SV22", "error": "Spec is not in Draft state. Cannot delete."})
                 jira.delete(spec)
                 spec.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT) 
+            return Response(status=status.HTTP_204_NO_CONTENT)
         except BaseException as be: # pragma: no cover
             formatError(be, "SPEC-SV09")
 
@@ -306,7 +296,7 @@ class SpecFileDetail(APIView):
 
     delete:
     file/<num>/<ver>/<fileName>
-    Delete file from spec 
+    Delete file from spec
     """
     permission_classes = [IsAuthenticatedOrReadOnly]
 
@@ -358,7 +348,7 @@ class SpecFileDetail(APIView):
                         change_type = 'Admin Update',
                         comment = f'File {fileName} deleted while spec in state: {spec.state}'
                     )
-            return Response(status=status.HTTP_204_NO_CONTENT) 
+            return Response(status=status.HTTP_204_NO_CONTENT)
         except BaseException as be: # pragma: no cover
             formatError(be, "SPEC-SV13")
 
@@ -461,7 +451,7 @@ class SpecExtend(APIView):
             formatError(be, "SPEC-SV20")
 
 class SunsetList(APIView):
-    """ 
+    """
     get:
     sunset/
     Return list of specs approaching sunset date (doc_type has sunset defined and spec is past the warn threshold)
@@ -480,11 +470,11 @@ class SunsetList(APIView):
                     where s.state = 'Active'
                 ) s
                 inner join doc_type dt on s.doc_type_id = dt.name and dt.sunset_interval is not null and dt.sunset_warn is not null
-                where dateadd(second, -(dt.sunset_warn/1000000), 
+                where dateadd(second, -(dt.sunset_warn/1000000),
                         dateadd(second, dt.sunset_interval/1000000, sunset_base_dt ) ) < GETUTCDATE()
                 order by dateadd(second, dt.sunset_interval/1000000, sunset_base_dt )
             """)
-            
+
             serializer = SpecListSerializer(queryset, many=True, context={'user':request.user})
 
             # If requested, return the entire data set in a csv file
