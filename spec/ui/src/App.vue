@@ -11,11 +11,7 @@
             >
               Sunset List
             </q-item>
-            <q-item
-              clickable
-              @click="router.push('/ui-doctype/')"
-              data-cy="app-doctype-btn"
-            >
+            <q-item clickable @click="router.push('/ui-doctype/')" data-cy="app-doctype-btn">
               Document Types
             </q-item>
             <q-item clickable @click="router.push('/ui-role/')" data-cy="app-role-btn">
@@ -24,19 +20,13 @@
             <q-item clickable @click="router.push('/ui-dept/')" data-cy="app-dept-btn">
               Departments
             </q-item>
-            <q-item
-              clickable
-              @click="router.push('/ui-apvl-mt/')"
-              data-cy="app-apvl-mt-btn"
-            >
+            <q-item clickable @click="router.push('/ui-loc/')" data-cy="app-loc-btn">
+              Locations
+            </q-item>
+            <q-item clickable @click="router.push('/ui-apvl-mt/')" data-cy="app-apvl-mt-btn" >
               Approval Matrix
             </q-item>
-            <q-item
-              clickable
-              v-show="isAdmin"
-              @click="router.push('/ui-token/')"
-              data-cy="app-token-btn"
-            >
+            <q-item clickable v-show="isAdmin" @click="router.push('/ui-token/')" data-cy="app-token-btn" >
               API Tokens
             </q-item>
           </q-list>

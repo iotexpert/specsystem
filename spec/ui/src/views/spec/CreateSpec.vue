@@ -1,12 +1,12 @@
 <template>
   <q-card class="dialog-window">
         <q-card-section class="bg-primary text-white row ">
-            <q-btn color="primary" icon="adb" @click="adminMode=!adminMode" v-if="isAdmin" dense data-cy="spec-admin-create"/> 
-            <q-space/>           
+            <q-btn color="primary" icon="adb" @click="adminMode=!adminMode" v-if="isAdmin" dense data-cy="spec-admin-create"/>
+            <q-space/>
             <div class="text-h4">Create Spec</div>
-            <q-btn icon="close" flat round dense data-cy="spec-create-close" v-close-popup /> 
+            <q-btn icon="close" flat round dense data-cy="spec-create-close" v-close-popup />
         </q-card-section>
-        <q-card-section class="q-pt-none">        
+        <q-card-section class="q-pt-none">
             <q-input label="Num" v-model.trim="num" v-if="adminMode" data-cy="spec-create-num"/>
             <q-input label="Ver" v-model.trim="ver" v-if="adminMode" data-cy="spec-create-ver"/>
             <q-select
@@ -22,6 +22,13 @@
                 :options="deptList"
                 emit-value
                 data-cy="spec-create-department"
+            />
+            <q-select
+                label="Location"
+                v-model="location"
+                :options="locList"
+                emit-value
+                data-cy="spec-create-location"
             />
             <q-input label="Title" v-model.trim="title" data-cy="spec-create-title"/>
         </q-card-section>
@@ -57,7 +64,7 @@ export default {
 }
 </script>
 
-<script setup>    
+<script setup>
     const store = useStore()
 
     const adminMode = ref(false)
@@ -66,6 +73,8 @@ export default {
     const doc_type = ref('')
     const doc_typeList = ref([])
     const isAdmin = ref(computed(() => store.getters.isAdmin))
+    const location = ref('')
+    const locList = ref([])
     const num = ref('')
     const router=useRouter();
     const title = ref('')
@@ -81,6 +90,7 @@ export default {
             title: title.value,
             doc_type: doc_type.value,
             department: department.value,
+            location: location.value,
             sigs:[],
             refs:[],
             files:[]
@@ -92,7 +102,7 @@ export default {
             showNotif(`Spec created: ${res.num}/${res.ver}`, 'green')
             router.push({name:"Spec Detail", params:{num:res.num, ver:res.ver}})
         }
-        
+
         waiting.value = false
     }
 
@@ -104,9 +114,12 @@ export default {
     async function loadLists() {
         let data_rows = await retrieveData('doctype/?limit=1000');
         doc_typeList.value = data_rows['results'].map((e) => {return ({label:e['name'],value:e['name']})})
-        
+
         data_rows = await retrieveData('dept/?limit=1000');
         deptList.value = data_rows['results'].map((e) => {return ({label:e['name'],value:e['name']})})
+
+        data_rows = await retrieveData('loc/?limit=1000');
+        locList.value = data_rows['results'].map((e) => {return ({label:e['name'],value:e['name']})})
     }
 </script>
 
