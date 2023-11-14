@@ -64,7 +64,7 @@ class SpecTestCase(TransactionTestCase):
                     item.pop(attrib)
         return item
 
-    def data_to_list(self, data, id_col='lot_id', add_row_num=False):
+    def data_to_list(self, data, id_col='lot_id', add_row_num=False): #pragma nocover
         doc_type = data['doc_type']
 
         ret_list = []
@@ -80,12 +80,12 @@ class SpecTestCase(TransactionTestCase):
         self.assertIn(err_field, resp['schemaErrors'])
         self.assertGreaterEqual(len(resp['schemaErrors'][err_field]), 1)
 
-    def add_row_num(self, data):
+    def add_row_num(self, data): #pragma nocover
         for idx, d in enumerate(data):
             d['row_num'] = idx + 2
         return data
 
-    def load_page(self, data):
+    def load_page(self, data): #pragma nocover
         data = json.loads(data)
         return data['results']
 
@@ -138,18 +138,18 @@ class SpecTestCase(TransactionTestCase):
         page['previous'] = None
         return page
 
-    def add_list_attribs(self, item_list, attribs):
+    def add_list_attribs(self, item_list, attribs): #pragma nocover
         for i, item in enumerate(item_list):
             item.update(attribs)
         return item_list
 
-    def diff_keys(self, d1, d2):
+    def diff_keys(self, d1, d2): #pragma nocover
         comm_keys = list(set(d1.keys() & set(d2.keys())))
         only_d1 = list(set(comm_keys) ^ set(d1.keys()))
         only_d2 = list(set(comm_keys) ^ set(d2.keys()))
         return sorted(only_d1), sorted(only_d2)
 
-    def diff_dicts(self, d1, d2):
+    def diff_dicts(self, d1, d2): #pragma nocover
         only_d1, only_d2 = self.diff_keys(d1, d2)
         if len(only_d1) > 0:
             print('only in d1: ' + str(only_d1))
@@ -162,7 +162,7 @@ class SpecTestCase(TransactionTestCase):
                 print("d1 value: " + str(d1[key]))
                 print("d2 value: " + str(d2[key]))
 
-    def dictfetchall(self, cursor):
+    def dictfetchall(self, cursor): #pragma nocover
         "Return all rows from a cursor as a dict"
         columns = [col[0] for col in cursor.description]
         return [

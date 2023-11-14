@@ -1,6 +1,6 @@
 from rest_framework.exceptions import ValidationError
 from .spec_create import specSetReqSigs, specSigCreate
-from ..models import Department, DocType, Role, SpecFile, SpecHist, SpecReference
+from ..models import Department, DocType, Location, Role, SpecFile, SpecHist, SpecReference
 from user.models import User
 
 def specUpdate(request, spec, validated_data):
@@ -15,8 +15,8 @@ def specUpdate(request, spec, validated_data):
 
         if spec.state == 'Active' and spec.approved_dt is None:
             spec.approved_dt = request._req_dt
- 
-    if validated_data['created_by'] and spec.created_by.username != validated_data['created_by']:        
+
+    if validated_data['created_by'] and spec.created_by.username != validated_data['created_by']:
         created_by = User.lookup(username=validated_data['created_by'])
         if not request.user.is_superuser:
             raise ValidationError({"errorCode":"SPEC-U54", "error": "Created By changes via update can only be done by an administrator."})
@@ -28,7 +28,7 @@ def specUpdate(request, spec, validated_data):
             comment = f'Created By changed from {spec.created_by.username} to {created_by.username}'
         )
         spec.created_by = created_by
-   
+
     # Only superusers can set the anon_access.
     if request.user.is_superuser:
         spec.anon_access = validated_data['anon_access']
@@ -41,6 +41,7 @@ def specUpdate(request, spec, validated_data):
 
     spec.doc_type = DocType.lookup(validated_data.pop("doc_type"))
     spec.department = Department.lookup(validated_data.pop("department"))
+    spec.location = Location.lookup(validated_data.pop("location"))
     spec.title = validated_data.pop("title")
     spec.keywords = validated_data.pop("keywords")
     spec.jira = validated_data.pop("jira")
@@ -97,4 +98,4 @@ def specFileUpload(request, spec, validated_data):
 
     specFile = SpecFile.objects.create(**validated_data)
 
-    return spec    
+    return spec

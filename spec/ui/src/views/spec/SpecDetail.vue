@@ -179,6 +179,7 @@
             <th align="left">Anonymous Access</th>
             <th align="left">Document Type</th>
             <th align="left">Department</th>
+            <th align="left">Location</th>
             <th
               align="left"
               v-show="String(jira).length > 0 || (edit && isAdmin)"
@@ -242,6 +243,19 @@
                 dense
                 :readonly="!edit"
                 data-cy="spec-detail-department"
+                ref="select"
+                width="100px"
+                :style="`width: ${width}px; word-break: break-all;`"
+              />
+            </td>
+            <td>
+              <q-select
+                v-model="location"
+                :options="locList"
+                emit-value
+                dense
+                :readonly="!edit"
+                data-cy="spec-detail-location"
                 ref="select"
                 width="100px"
                 :style="`width: ${width}px; word-break: break-all;`"
@@ -776,6 +790,8 @@ const extend_spec = ref(false);
 const isAdmin = ref(computed(() => store.getters.isAdmin));
 const isAuthenticated = ref(computed(() => store.getters.authenticated));
 const keywords = ref("");
+const location = ref("");
+const locList = ref([]);
 const fileRows = ref([]);
 const histRows = ref([]);
 const jira = ref("");
@@ -807,6 +823,7 @@ async function saveSpec() {
     state: state.value,
     doc_type: doc_type.value,
     department: department.value,
+    location: location.value,
     title: title.value,
     keywords: keywords.value,
     reason: reason.value,
@@ -923,6 +940,7 @@ function loadForm(res) {
   jira.value = res["jira"];
   jira_url.value = res["jira_url"];
   keywords.value = res["keywords"];
+  location.value = res["location"];
   mod_ts.value = res["mod_ts"];
   reason.value = res["reason"];
   refRows.value = res["refs"];
@@ -1038,8 +1056,12 @@ async function loadLists() {
   data_rows["results"].forEach((entry) => {
     roleUserMap.value[entry["role"]] = [{ label: "Any", value: "" }].concat(
       entry["user_arr"].map((e) => {
+        let label = e["username"] + ", " + e["first_name"] + " " + e["last_name"];
+        if (e["descr"]) {
+            label += " (" + e["descr"] + ")"
+        }
         return {
-          label: e["username"] + ", " + e["first_name"] + " " + e["last_name"],
+          label: label,
           value: e["username"],
         };
       })
@@ -1055,26 +1077,22 @@ async function loadLists() {
   deptList.value = data_rows["results"].map((e) => {
     return { label: e["name"], value: e["name"] };
   });
+
+  data_rows = await retrieveData("loc/?limit=1000");
+  locList.value = data_rows["results"].map((e) => {
+    return { label: e["name"], value: e["name"] };
+  });
 }
 
 const spec_columns = [
   { name: "num", align: "left", label: "Spec", field: "num" },
   { name: "title", align: "left", label: "Title", field: "title" },
   { name: "doc_type", align: "left", label: "Doc Type", field: "doc_type" },
-  {
-    name: "department",
-    align: "left",
-    label: "Department",
-    field: "department",
-  },
+  { name: "department", align: "left", label: "Department", field: "department", },
+  { name: "location", align: "left", label: "Location", field: "location", },
   { name: "keywords", align: "left", label: "Keywords", field: "keywords" },
   { name: "state", align: "left", label: "State", field: "state" },
-  {
-    name: "created_by",
-    align: "left",
-    label: "Created By",
-    field: "created_by",
-  },
+  { name: "created_by", align: "left", label: "Created By", field: "created_by", },
   { name: "mod_ts", align: "left", label: "Last Modified", field: "mod_ts" },
 ];
 </script>

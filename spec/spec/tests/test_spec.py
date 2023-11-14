@@ -35,6 +35,9 @@ class SpecTest(SpecTestCase):
         self.assertEqual(response.status_code, 201)
         response = self.post_request('/approvalmatrix/', conf.approvalmatrix_post_3, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 201)
+        # Load needed Locations
+        response = self.post_request('/loc/', conf.loc_post_1, auth_lvl='ADMIN')
+        self.assertEqual(response.status_code, 201)
 
     def test_spec(self):
         self.post_conf()
@@ -106,9 +109,9 @@ class SpecTest(SpecTestCase):
         self.assertEqual(resp, self.paginate_results([spec_get_1, spec_get_2]))
 
         # Download specs with 'Draft' in state to a csv
-        expected=f'''num,ver,title,doc_type,department,keywords,state,created_by,create_dt,mod_ts,jira,anon_access,reason,approved_dt,sunset_extended_dt,sunset_dt,sunset_warn_dt,watched
-{spec_resp_get_1["num"]},A,"SOP, Spec Creation",SOP,Ops:Line1,keyword one,Draft,SPEC-Test-User,{spec_resp_get_1["create_dt"]},{spec_resp_get_1["mod_ts"]},,False,Initial Version,,,,,False
-{spec_resp_get_2["num"]},A,"WI, Route Spec",WI,Ops,keyword two,Draft,SPEC-Admin-Test-User,{spec_resp_get_2["create_dt"]},{spec_resp_get_2["mod_ts"]},,False,Initial Version,,,,,False
+        expected=f'''num,ver,title,doc_type,department,keywords,state,created_by,create_dt,mod_ts,jira,anon_access,reason,approved_dt,sunset_extended_dt,sunset_dt,sunset_warn_dt,location,watched
+{spec_resp_get_1["num"]},A,"SOP, Spec Creation",SOP,Ops:Line1,keyword one,Draft,SPEC-Test-User,{spec_resp_get_1["create_dt"]},{spec_resp_get_1["mod_ts"]},,False,Initial Version,,,,,Corporate,False
+{spec_resp_get_2["num"]},A,"WI, Route Spec",WI,Ops,keyword two,Draft,SPEC-Admin-Test-User,{spec_resp_get_2["create_dt"]},{spec_resp_get_2["mod_ts"]},,False,Initial Version,,,,,,False
 '''
         response = self.get_request(f'/spec/?state=Draft&output_csv=true')
         self.assertEqual(response.status_code, 200)
@@ -339,7 +342,7 @@ class SpecTest(SpecTestCase):
         # Remove user from Read Role
         response = self.put_request(f'/role/{conf.role_put_1["role"]}', conf.role_put_1, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 200)
-        
+
         response = self.get_request(f'/spec/{spec_ids[1]}/A', auth_lvl='USER')
         self.assertEqual(response.status_code, 400)
         resp = json.loads(response.content)
@@ -576,8 +579,8 @@ class SpecTest(SpecTestCase):
 
         # Get sunset list to a csv
         s = resp[0]
-        expected=f'''num,ver,title,doc_type,department,keywords,state,created_by,create_dt,mod_ts,jira,anon_access,reason,approved_dt,sunset_extended_dt,sunset_dt,sunset_warn_dt,watched
-{s["num"]},{s["ver"]},"{s["title"]}",{s["doc_type"]},{s["department"]},{s["keywords"]},{s["state"]},{s["created_by"]},{s["create_dt"]},{s["mod_ts"]},,False,,{s["approved_dt"]},,{s["sunset_dt"]},{s["sunset_warn_dt"]},False
+        expected=f'''num,ver,title,doc_type,department,keywords,state,created_by,create_dt,mod_ts,jira,anon_access,reason,approved_dt,sunset_extended_dt,sunset_dt,sunset_warn_dt,location,watched
+{s["num"]},{s["ver"]},"{s["title"]}",{s["doc_type"]},{s["department"]},{s["keywords"]},{s["state"]},{s["created_by"]},{s["create_dt"]},{s["mod_ts"]},,False,,{s["approved_dt"]},,{s["sunset_dt"]},{s["sunset_warn_dt"]},,False
 '''
         response = self.get_request(f'/sunset/?output_csv=true')
         self.assertEqual(response.status_code, 200)

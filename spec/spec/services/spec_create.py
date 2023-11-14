@@ -5,7 +5,7 @@ from django.core.mail import EmailMessage
 from rest_framework.exceptions import ValidationError
 from spec.services.revletter import get_next_version, valid_rev
 from user.models import User
-from ..models import ApprovalMatrix, Department, DocType, Role, Spec, SpecHist, SpecSig, SpecFile, SpecReference, UserWatch
+from ..models import ApprovalMatrix, Department, DocType, Location, Role, Spec, SpecHist, SpecSig, SpecFile, SpecReference, UserWatch
 from . import jira
 
 
@@ -13,12 +13,13 @@ def specImport(request, validated_data):
     """Used for initial import of specs to specified state with specified dates"""
     comment = validated_data.pop("comment")
     jira_create = validated_data.pop("jira_create")
-    
+
     if not valid_rev(validated_data['ver']):
         raise ValidationError({"errorCode":"SPEC-C06", "error": f"Ver can only contain uppercase letters."})
 
     validated_data['doc_type'] = DocType.lookupOrCreate(validated_data['doc_type'])
     validated_data['department'] = Department.lookupOrCreate(validated_data['department'])
+    validated_data['location'] = Location.lookupOrCreate(validated_data['location'])
 
     # If we can find the created_by user specified, use it
     # Otherwise, user the user doing the load
@@ -33,6 +34,7 @@ def specImport(request, validated_data):
         spec.title = validated_data['title']
         spec.doc_type = validated_data['doc_type']
         spec.department = validated_data['department']
+        spec.location = validated_data['location']
         spec.state = validated_data['state']
         spec.keywords = validated_data['keywords']
         spec.reason = validated_data['reason']
@@ -44,7 +46,7 @@ def specImport(request, validated_data):
         spec.save()
     else:
         spec = Spec.objects.create(**validated_data)
-    
+
     if not comment:
         comment = 'Initial Load'
     SpecHist.objects.create(
@@ -61,7 +63,7 @@ def specImport(request, validated_data):
         jira.active(spec)
 
     return spec
-    
+
 def specSigCreate(request, spec, role, signerName, from_am):
     if signerName:
         signer = User.lookup(username=signerName)
@@ -70,7 +72,7 @@ def specSigCreate(request, spec, role, signerName, from_am):
 
     # If the role has users specified, the signer must be in the list
     if signer and role.users.count() > 0 and not role.isMember(signer):
-        raise ValidationError({"errorCode":"SPEC-C07", 
+        raise ValidationError({"errorCode":"SPEC-C07",
             "error": f"Signer {signer} for Role {role.role} needs to be in list: {list(role.users.values('user__username').values_list('user__username', flat=True))}"})
 
     if not from_am and signer:
@@ -91,9 +93,11 @@ def specSetReqSigs(request, spec):
 def specCreate(request, validated_data):
     docTypeName = validated_data.pop("doc_type")
     deptName = validated_data.pop("department")
+    location = validated_data.pop("location")
 
     validated_data['doc_type'] = DocType.lookup(docTypeName)
     validated_data['department'] = Department.lookup(deptName)
+    validated_data['location'] = Location.lookup(location)
 
     if validated_data['num'] is not None:
         if not request.user.is_superuser:
@@ -148,9 +152,9 @@ def specRevise(request, spec, validated_data):
     spec.reason = validated_data['reason']
     spec.approved_dt = None
     spec.sunset_extended_dt = None
-    
+
     spec.save()
-    
+
     specSetReqSigs(request, spec)
 
     for ref_data in orig_spec.refs.all():

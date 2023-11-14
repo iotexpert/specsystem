@@ -9,7 +9,8 @@ spec_post_1 = {
     "sigs": [],
     "files": [],
     "refs": [],
-    "state":"Draft"
+    "state":"Draft",
+    "location":"Corporate",
 }
 
 spec_get_1 = {
@@ -17,6 +18,7 @@ spec_get_1 = {
     "keywords": "keyword one",
     "doc_type": "SOP",
     "department": "Ops:Line1",
+    "location": "Corporate",
     'sigs': [
         {'role': 'Op_Line1', 'signed_dt': None, 'from_am': True, 'spec_one': True, 'signer': None, 'delegate': None},
         {'role': 'Qual', 'signed_dt': None, 'from_am': True, 'spec_one': False, 'signer': None, 'delegate': None}],
@@ -36,6 +38,7 @@ spec_post_2 = {
     "keywords": "keyword two",
     "doc_type": "WI",
     "department": "Ops",
+    "location": None,
     "sigs": [],
     "files": [],
     "refs": [],
@@ -65,7 +68,7 @@ spec_put_2 = {
     "doc_type": "SOP",
     "department": "Ops:Line1",
     "jira": "TEST-1",
-    "sigs": [{'role':conf.role_post_1['role'],'signer':os.getenv("USER_USER"), 'from_am':True}, 
+    "sigs": [{'role':conf.role_post_1['role'],'signer':os.getenv("USER_USER"), 'from_am':True},
              {'role':conf.role_post_2['role'],'signer':os.getenv("ADMIN_USER"), 'from_am':False},
              {'role':conf.role_post_3['role'],'signer':None, 'from_am':True}],
     "files": [{"filename":"torch.jpg", "incl_pdf":False}, {"filename":"Text1.docx", "incl_pdf":True}, {"filename":"small_pdf.pdf", "incl_pdf":True}],
@@ -161,7 +164,8 @@ spec_import_post_1 = {
     "department": "Ops:Line1:Area1",
     'create_dt': '2022-08-28T00:00:00Z',
     'mod_ts': '2022-08-29T00:00:00Z',
-    "state":"Draft"
+    "state":"Draft",
+    "location":"Corporate",
 }
 
 spec_import_post_2 = {
@@ -174,6 +178,7 @@ spec_import_post_2 = {
     'approved_dt': '2022-08-29T00:00:00Z',
     'mod_ts': '2022-08-29T00:00:00Z',
     "state":"Active",
+    "location":"California",
 }
 
 spec_import_post_3 = {
