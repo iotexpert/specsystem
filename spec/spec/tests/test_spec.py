@@ -60,26 +60,23 @@ class SpecTest(SpecTestCase):
         self.assertEqual(response.status_code, 200)
         resp = json.loads(response.content)
         spec_resp_get_1 = copy.deepcopy(resp["results"][0])
-        resp['results'] = self.delete_list_attribs(resp['results'], ['created_by', 'create_dt', 'mod_ts', 'jira', 'anon_access', 'hist', 'watched'])
-        spec_get_1 = copy.deepcopy(spec.spec_get_1)
+        resp['results'] = self.delete_list_attribs(resp['results'], ['create_dt', 'mod_ts', ])
+        spec_get_1 = copy.deepcopy(spec.spec_get_list_1)
         spec_get_1['num'] = spec_ids[0]
-        spec_get_1.pop('files')
-        spec_get_1.pop('refs')
-        spec_get_1.pop('sigs')
         self.assertEqual(resp, self.paginate_results([spec_get_1]))
 
         # List all specs with first number
         response = self.get_request(f'/spec/{spec_ids[0]}')
         self.assertEqual(response.status_code, 200)
         resp = json.loads(response.content)
-        resp['results'] = self.delete_list_attribs(resp['results'], ['created_by', 'create_dt', 'mod_ts', 'jira', 'anon_access', 'hist', 'watched'])
+        resp['results'] = self.delete_list_attribs(resp['results'], ['create_dt', 'mod_ts', ])
         self.assertEqual(resp, self.paginate_results([spec_get_1]))
 
         # List all specs with 'Spec Creation' in title'
         response = self.get_request(f'/spec/?title=Spec%20Creation')
         self.assertEqual(response.status_code, 200)
         resp = json.loads(response.content)
-        resp['results'] = self.delete_list_attribs(resp['results'], ['created_by', 'create_dt', 'mod_ts', 'jira', 'anon_access', 'hist', 'watched'])
+        resp['results'] = self.delete_list_attribs(resp['results'], ['create_dt', 'mod_ts', ])
         self.assertEqual(resp, self.paginate_results([spec_get_1]))
 
         # List all specs with 'two' in keywords'
@@ -87,31 +84,22 @@ class SpecTest(SpecTestCase):
         self.assertEqual(response.status_code, 200)
         resp = json.loads(response.content)
         spec_resp_get_2 = copy.deepcopy(resp["results"][0])
-        resp['results'] = self.delete_list_attribs(resp['results'], ['created_by', 'create_dt', 'mod_ts', 'jira', 'anon_access', 'hist', 'watched'])
-        spec_get_2 = copy.deepcopy(spec.spec_post_2)
+        resp['results'] = self.delete_list_attribs(resp['results'], ['create_dt', 'mod_ts'])
+        spec_get_2 = copy.deepcopy(spec.spec_get_list_2)
         spec_get_2['num'] = spec_ids[1]
-        spec_get_2['ver'] = 'A'
-        spec_get_2['reason'] = 'Initial Version'
-        spec_get_2.pop('sigs')
-        spec_get_2.pop('files')
-        spec_get_2.pop('refs')
-        spec_get_2['approved_dt'] = None
-        spec_get_2['sunset_extended_dt'] = None
-        spec_get_2['sunset_dt'] = None
-        spec_get_2['sunset_warn_dt'] = None
         self.assertEqual(resp, self.paginate_results([spec_get_2]))
 
         # List all specs with 'Draft' in state
         response = self.get_request(f'/spec/?state=Draft')
         self.assertEqual(response.status_code, 200)
         resp = json.loads(response.content)
-        resp['results'] = self.delete_list_attribs(resp['results'], ['created_by', 'create_dt', 'mod_ts', 'jira', 'anon_access', 'hist', 'watched'])
+        resp['results'] = self.delete_list_attribs(resp['results'], ['create_dt', 'mod_ts'])
         self.assertEqual(resp, self.paginate_results([spec_get_1, spec_get_2]))
 
         # Download specs with 'Draft' in state to a csv
-        expected=f'''num,ver,title,doc_type,department,keywords,state,created_by,create_dt,mod_ts,jira,anon_access,reason,approved_dt,sunset_extended_dt,sunset_dt,sunset_warn_dt,location,watched
-{spec_resp_get_1["num"]},A,"SOP, Spec Creation",SOP,Ops:Line1,keyword one,Draft,SPEC-Test-User,{spec_resp_get_1["create_dt"]},{spec_resp_get_1["mod_ts"]},,False,Initial Version,,,,,Corporate,False
-{spec_resp_get_2["num"]},A,"WI, Route Spec",WI,Ops,keyword two,Draft,SPEC-Admin-Test-User,{spec_resp_get_2["create_dt"]},{spec_resp_get_2["mod_ts"]},,False,Initial Version,,,,,,False
+        expected=f'''num,ver,title,doc_type,department,keywords,state,created_by,create_dt,mod_ts,jira,anon_access,reason,approved_dt,sunset_extended_dt,sunset_dt,sunset_warn_dt,location,first_submit_dt,last_submit_dt,reject_cnt,admin_upd_cnt,missing_sigs,watched
+{spec_resp_get_1["num"]},A,"SOP, Spec Creation",SOP,Ops:Line1,keyword one,Draft,SPEC-Test-User,{spec_resp_get_1["create_dt"]},{spec_resp_get_1["mod_ts"]},,False,Initial Version,,,,,Corporate,,,0,0,,False
+{spec_resp_get_2["num"]},A,"WI, Route Spec",WI,Ops,keyword two,Draft,SPEC-Admin-Test-User,{spec_resp_get_2["create_dt"]},{spec_resp_get_2["mod_ts"]},,False,Initial Version,,,,,,,,0,0,,False
 '''
         response = self.get_request(f'/spec/?state=Draft&output_csv=true')
         self.assertEqual(response.status_code, 200)
@@ -123,7 +111,7 @@ class SpecTest(SpecTestCase):
         response = self.get_request(f'/spec/?created_by={os.getenv("USER_USER")}')
         self.assertEqual(response.status_code, 200)
         resp = json.loads(response.content)
-        resp['results'] = self.delete_list_attribs(resp['results'], ['created_by', 'create_dt', 'mod_ts', 'jira', 'anon_access', 'hist', 'watched'])
+        resp['results'] = self.delete_list_attribs(resp['results'], ['create_dt', 'mod_ts'])
         self.assertEqual(resp, self.paginate_results([spec_get_1]))
 
         # Error: Not logged in
@@ -136,8 +124,8 @@ class SpecTest(SpecTestCase):
         response = self.get_request(f'/spec/{spec_ids[0]}/A', auth_lvl='USER')
         self.assertEqual(response.status_code, 200)
         resp = json.loads(response.content)
-        resp = self.delete_attribs(resp, ['created_by', 'create_dt', 'mod_ts', 'jira', 'anon_access', 'hist', 'watched'])
-        spec_get_1 = copy.deepcopy(spec.spec_get_1)
+        resp = self.delete_attribs(resp, ['create_dt', 'mod_ts'])
+        spec_get_1 = copy.deepcopy(spec.spec_get_detail_1)
         spec_get_1['num'] = spec_ids[0]
         self.assertEqual(resp, spec_get_1)
 
@@ -201,6 +189,13 @@ class SpecTest(SpecTestCase):
         self.assertEqual(resp['files'][1]['filename'], 'Text1.docx')
         self.assertEqual(resp['files'][1]['incl_pdf'], True)
         self.assertEqual(resp['refs'], [{'num': spec_ids[1], 'ver': 'A'}])
+
+        # List filtered to same spec
+        response = self.get_request(f'/spec/?num={spec_ids[0]}&ver=A')
+        self.assertEqual(response.status_code, 200)
+        resp = json.loads(response.content)
+        self.assertEqual(1, resp["count"])
+        self.assertEqual(2, resp["results"][0]["admin_upd_cnt"])
 
         # Update spec - change state back to Draft to catch signer changes
         response = self.put_request(f'/spec/{spec_ids[0]}/A', spec.spec_put_2, auth_lvl='ADMIN')
@@ -416,12 +411,12 @@ class SpecTest(SpecTestCase):
         self.assertEqual(resp['error'], "Num 1 is already used in the system.")
 
         response = self.get_request(f'/spec/1/A', auth_lvl='USER')
-        spec_get_1 = copy.deepcopy(spec.spec_get_1)
+        spec_get_1 = copy.deepcopy(spec.spec_get_detail_1)
         spec_get_1['num'] = 1
+        spec_get_1['created_by'] = 'SPEC-Admin-Test-User'
         self.assertEqual(response.status_code, 200)
         resp = json.loads(response.content)
-        resp = self.delete_attribs(resp,
-                                   ['created_by', 'create_dt', 'mod_ts', 'jira', 'anon_access', 'hist', 'watched'])
+        resp = self.delete_attribs(resp, ['create_dt', 'mod_ts', ])
         self.assertEqual(resp, spec_get_1)
 
     def test_file(self):
@@ -579,8 +574,8 @@ class SpecTest(SpecTestCase):
 
         # Get sunset list to a csv
         s = resp[0]
-        expected=f'''num,ver,title,doc_type,department,keywords,state,created_by,create_dt,mod_ts,jira,anon_access,reason,approved_dt,sunset_extended_dt,sunset_dt,sunset_warn_dt,location,watched
-{s["num"]},{s["ver"]},"{s["title"]}",{s["doc_type"]},{s["department"]},{s["keywords"]},{s["state"]},{s["created_by"]},{s["create_dt"]},{s["mod_ts"]},,False,,{s["approved_dt"]},,{s["sunset_dt"]},{s["sunset_warn_dt"]},,False
+        expected=f'''num,ver,title,doc_type,department,keywords,state,created_by,create_dt,mod_ts,jira,anon_access,reason,approved_dt,sunset_extended_dt,sunset_dt,sunset_warn_dt,location,first_submit_dt,last_submit_dt,reject_cnt,admin_upd_cnt,missing_sigs,watched
+{s["num"]},{s["ver"]},"{s["title"]}",{s["doc_type"]},{s["department"]},{s["keywords"]},{s["state"]},{s["created_by"]},{s["create_dt"]},{s["mod_ts"]},,False,,{s["approved_dt"]},,{s["sunset_dt"]},{s["sunset_warn_dt"]},,,,0,2,,False
 '''
         response = self.get_request(f'/sunset/?output_csv=true')
         self.assertEqual(response.status_code, 200)

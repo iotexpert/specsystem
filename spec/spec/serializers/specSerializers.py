@@ -108,6 +108,26 @@ class SpecListSerializer(serializers.ModelSerializer):
         if data["sunset_warn_dt"]:
             data["sunset_warn_dt"] = data["sunset_warn_dt"].isoformat()
 
+        # Need to lookup data from spec hist for reporting
+        submit_dts = value.hist.filter(change_type="Submit").order_by("mod_ts").values_list("mod_ts", flat=True)
+        if len(submit_dts):
+            data['first_submit_dt'] = submit_dts[0].isoformat()
+            data['last_submit_dt'] = submit_dts[len(submit_dts)-1].isoformat()
+        else:
+            data['first_submit_dt'] = None
+            data['last_submit_dt'] = None
+        data['reject_cnt'] = value.hist.filter(change_type="Reject").count()
+        data['admin_upd_cnt'] = value.hist.filter(change_type="Admin Update").count()
+        if value.state == 'Signoff':
+            sigs = value.sigs.filter(signed_dt__isnull=True).select_related().order_by('-from_am', 'role', )
+            sig_strs = []
+            for sig in sigs:
+                signer = sig.signer.username if sig.signer else ''
+                sig_strs.append(f"{sig.role.role}:{signer}")
+            data['missing_sigs'] = ', '.join(sig_strs)
+        else:
+            data['missing_sigs'] = None
+
         try:
             user = self.context.get("user")
             data['watched'] = user.watches.filter(num=value.num).first() != None
