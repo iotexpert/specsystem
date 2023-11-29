@@ -13,7 +13,7 @@ spec_post_1 = {
     "location":"Corporate",
 }
 
-spec_get_1 = {
+spec_get_detail_1 = {
     "title": "SOP, Spec Creation",
     "keywords": "keyword one",
     "doc_type": "SOP",
@@ -30,7 +30,60 @@ spec_get_1 = {
     'approved_dt': None,
     'sunset_extended_dt':None,
     'sunset_dt':None,
-    'sunset_warn_dt':None
+    'sunset_warn_dt':None,
+    'anon_access': False,
+    'created_by': 'SPEC-Test-User',
+    'hist': [],
+    'jira': None,
+    'watched': False,
+}
+
+spec_get_list_1 = {
+    "title": "SOP, Spec Creation",
+    "keywords": "keyword one",
+    "doc_type": "SOP",
+    "department": "Ops:Line1",
+    "location": "Corporate",
+    "state":"Draft",
+    "ver": "A",
+    'reason': 'Initial Version',
+    'approved_dt': None,
+    'sunset_extended_dt':None,
+    'sunset_dt':None,
+    'sunset_warn_dt':None,
+    'first_submit_dt': None,
+    'last_submit_dt': None,
+    'reject_cnt': 0,
+    'admin_upd_cnt': 0,
+    'missing_sigs': None,
+    'anon_access': False,
+    'created_by': 'SPEC-Test-User',
+    'jira': None,
+    'watched': False,
+}
+
+spec_get_list_2 = {
+    "title": "WI, Route Spec",
+    "keywords": "keyword two",
+    "doc_type": "WI",
+    "department": "Ops",
+    "location": None,
+    "state":"Draft",
+    "ver": "A",
+    'reason': 'Initial Version',
+    'approved_dt': None,
+    'sunset_extended_dt':None,
+    'sunset_dt':None,
+    'sunset_warn_dt':None,
+    'first_submit_dt': None,
+    'last_submit_dt': None,
+    'reject_cnt': 0,
+    'admin_upd_cnt': 0,
+    'missing_sigs': None,
+    'anon_access': False,
+    'created_by': 'SPEC-Admin-Test-User',
+    'jira': None,
+    'watched': False,
 }
 
 spec_post_2 = {

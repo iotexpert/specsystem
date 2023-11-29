@@ -171,7 +171,7 @@ class RouteTest(SpecTestCase):
         response = self.post_request(f'/sign/{spec_ids[0]}/A', spec.sign_post_1, auth_lvl='USER')
         self.assertEqual(response.status_code, 200)
 
-        # Re-ign QUAL sig
+        # Re-sign QUAL sig
         response = self.post_request(f'/sign/{spec_ids[0]}/A', spec.sign_post_1, auth_lvl='USER')
         self.assertEqual(response.status_code, 200)
 
@@ -230,6 +230,18 @@ class RouteTest(SpecTestCase):
         resp = json.loads(response.content)
         self.assertIn('error', resp)
         self.assertEqual(resp['error'], "Current user SPEC-Test-User is not a delegate for SPEC-Admin-Test-User")
+
+        # List filtered to same spec
+        response = self.get_request(f'/spec/?num={spec_ids[0]}&ver=A')
+        self.assertEqual(response.status_code, 200)
+        resp = json.loads(response.content)
+        self.assertEqual(1, resp["count"])
+        self.assertIsNotNone(resp["results"][0]["first_submit_dt"])
+        self.assertIsNotNone(resp["results"][0]["last_submit_dt"])
+        self.assertGreater(resp["results"][0]["last_submit_dt"], resp["results"][0]["first_submit_dt"])
+        self.assertEqual(1, resp["results"][0]["reject_cnt"])
+        self.assertEqual(0, resp["results"][0]["admin_upd_cnt"])
+        self.assertEqual(resp["results"][0]["missing_sigs"], f"Op_Line1:{os.getenv('ADMIN_USER')}, Op:{os.getenv('ADMIN_USER')}")
 
         # Sign OP sig
         response = self.post_request(f'/sign/{spec_ids[0]}/A', spec.sign_post_2, auth_lvl='ADMIN')

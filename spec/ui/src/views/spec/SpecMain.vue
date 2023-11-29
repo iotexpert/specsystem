@@ -161,6 +161,11 @@
                     : ""
                 }}
               </span>
+              <span v-else-if="col.name === 'state' && props.row[col.name] === 'Signoff'">
+                {{ props.row['state'] }}
+                <br> Submitted: {{ dispDate(props.row['last_submit_dt']) }}
+                <br> {{ props.row['missing_sigs'] }}
+              </span>
               <span v-else>{{ props.row[col.name] }}</span>
             </q-td>
           </q-tr>
@@ -211,7 +216,7 @@
 </template>
 
 <script>
-import { apiServerHost, deleteData, postData, retrieveData } from "@/utils.js";
+import { apiServerHost, deleteData, dispDate, postData, retrieveData } from "@/utils.js";
 
 import { ref, onMounted, computed, defineProps, watch } from "vue";
 import { useStore } from "vuex";
