@@ -297,7 +297,7 @@ class Spec(models.Model):
         if spec.doc_type.confidential:
             if not spec.department.isReader(user):
                 if spec.state != "Draft" or user != spec.created_by:
-                    raise ValidationError({"errorCode":"SPEC-M05", "error": f"User {user} cannot read confiential specs in department {spec.department}."})
+                    raise ValidationError({"errorCode":"SPEC-M05", "error": f"User {user} cannot read confidential specs in department {spec.department}."})
         return spec
 
 class SpecSig(models.Model):
