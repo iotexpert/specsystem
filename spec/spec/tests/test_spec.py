@@ -341,7 +341,7 @@ class SpecTest(SpecTestCase):
         response = self.get_request(f'/spec/{spec_ids[1]}/A', auth_lvl='USER')
         self.assertEqual(response.status_code, 400)
         resp = json.loads(response.content)
-        self.assertEqual(resp['error'], f'User {os.getenv("USER_USER")} cannot read confiential specs in department HR.')
+        self.assertEqual(resp['error'], f'User {os.getenv("USER_USER")} cannot read confidential specs in department HR.')
 
         # Update doc_type to WI. With an Active spec will trigger sunset
         spec_import['doc_type'] = 'WI'
