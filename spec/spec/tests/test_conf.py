@@ -1,5 +1,8 @@
 import copy
 import json
+import os
+from time import sleep
+from django.conf import settings
 from django.conf import settings
 from utils.test_utils import SpecTestCase
 from . import conf_resources as tr
@@ -509,3 +512,40 @@ class ConfTest(SpecTestCase):
         self.assertEqual(response.status_code, 400)
         resp = json.loads(response.content)
         self.assertEqual(resp['error'], f"Location: {tr.loc_post_1['name']} does not exist.")
+
+
+    def test_session_timeout(self):
+        """Test that session timeout is based on inactive time."""
+
+        settings.SESSION_IDLE_TIMEOUT = 2 # Set session timeout to 2 seconds
+        resp = self.client.get('/accounts/login/')
+        tok = resp.cookies['csrftoken'].value
+        # Login via csrf token + djagno LDAP
+        auth_body = {'username': os.getenv('ADMIN_USER'), 'password': os.getenv('ADMIN_PASSWD')}
+        response = self.client.post('/accounts/login/', auth_body)
+        self.assertEqual(response.status_code, 302)
+
+        # Set token
+        headers = {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': tok,
+                }
+
+        response = self.post_request('/role/', tr.role_post_4, auth_lvl='ADMIN')
+        self.assertEqual(response.status_code, 201)
+
+        sleep(1)
+        response = self.client.put(path=f'/role/{tr.role_post_4["role"]}', data=tr.role_post_4, content_type='application/json', **headers)
+        self.assertEqual(response.status_code, 200)
+
+        sleep(1)
+        response = self.client.put(path=f'/role/{tr.role_post_4["role"]}', data=tr.role_post_4, content_type='application/json', **headers)
+        self.assertEqual(response.status_code, 200)
+
+        sleep(1)
+        response = self.client.put(path=f'/role/{tr.role_post_4["role"]}', data=tr.role_post_4, content_type='application/json', **headers)
+        self.assertEqual(response.status_code, 200)
+
+        sleep(3)
+        response = self.client.put(path=f'/role/{tr.role_post_4["role"]}', data=tr.role_post_4, content_type='application/json', **headers)
+        self.assertEqual(response.status_code, 401)

@@ -63,13 +63,14 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'utils.middleware.SessionTimeoutMiddleware', # Must be after user is authenticated
 ]
 
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = ['http://localhost:8081', 'http://127.0.0.1:8080', 'http://127.0.0.1:8081',  'http://127.0.0.1:8000', 'http://spec-dev01:80/']
 TOKEN_EXPIRED_AFTER_SECONDS = 60*60*24*365 # one year (These are for automated interfaces)
-SESSION_COOKIE_AGE = 60 * 60 * 4 # four hours of web inactivity (These are for web interactions)
+SESSION_IDLE_TIMEOUT = 60 * 60 * 4 # in seconds 4 hours (Web interface)
 
 ROOT_URLCONF = 'proj.urls'
 
@@ -227,7 +228,7 @@ LOGGING = {
                     },
                 },
             }
-            
+
 SOFFICE = None
 TEMP_PDF = os.path.join(MEDIA_ROOT, 'temp')
 
