@@ -1,214 +1,97 @@
 <template>
   <q-page>
     <div>
-      <q-table
-        :rows="rows"
-        :columns="columns"
-        :rows-per-page-options="[0]"
-        data-cy="spec-table"
-      >
+      <q-table dense ref="tableRef" :rows="rows" :columns="columns" :rows-per-page-options="[5, 10, 15, 20, 50, 100, 250]"
+        selection="single" v-model:pagination="pagination" :loading="loading" :filter="filter" binary-state-sort
+        @request="qTableOnRequest" :visible-columns="visibleColumns" >
         <template v-slot:top-left>
           <div>
-            <q-btn
-              round
-              color="primary"
-              @click="applyFilter()"
-              icon="filter_alt"
-              data-cy="data-filter-btn"
-            />
+            <q-btn dense color="primary" round icon="filter_alt" @click="filterShow = !filterShow">
+              <q-tooltip>Toggle Filter Row</q-tooltip>
+            </q-btn>
             &nbsp;
-            <q-btn
-              round
-              color="primary"
-              @click="clearFilter()"
-              icon="filter_alt_off"
-              data-cy="data-clear-filter-btn"
-            />
+            <q-btn dense color="primary" round @click="filter = {}; filter_state=[]" icon="filter_alt_off" data-cy="data-clear-filter-btn">
+              <q-tooltip>Clear Filters</q-tooltip>
+            </q-btn>
           </div>
         </template>
+
         <template v-slot:top-right>
-          <div>
-            <q-btn
-              color="primary"
-              v-show="isAuthenticated"
-              @click="add_spec = true"
-              label="Add Spec"
-              icon-right="add"
-              no-caps
-              data-cy="data-row-btn"
-            />
-          </div>
+          <q-btn dense v-show="isAuthenticated" color="primary" @click="add_spec = true" icon="add" data-cy="add-row" label="Add Spec" no-caps/>
+          &nbsp;
+          <q-btn dense color="primary" @click=" toCSV() " target="_blank" icon="file_download" data-cy="open-file">
+            <q-tooltip>Download to CSV</q-tooltip>
+          </q-btn>
         </template>
-        <template v-slot:header="props">
-          <q-th
-            v-for="col in columns"
-            :key="col.name"
-            :props="props"
-            style="vertical-align: top"
-          >
-            {{ col.label }}
-            <br />
-            <span
-              v-show="
-                [
-                  'num',
-                  'title',
-                  'doc_type',
-                  'department',
-                  'location',
-                  'keywords',
-                  'created_by',
-                ].includes(col.name)
-              "
-            >
-              <q-icon name="filter_alt" />
-              <q-input
-                v-model.trim="filter[col.name]"
-                data-cy="spec-detail-ref-num"
-                dense
-                @keydown.enter="applyFilter()"
-                @blur="applyFilter()"
-                class="inline-block"
-              />
-            </span>
-            <span v-show="['state'].includes(col.name)" class="row">
-              <q-select
-                v-model="filter_state"
-                data-cy="spec-detail-filter-state"
-                :options="[
-                  { label: 'Draft', value: 'draft' },
-                  { label: 'Signoff', value: 'signoff' },
-                  { label: 'Active', value: 'active' },
-                  { label: 'Obsolete', value: 'obsolete' },
-                ]"
-                multiple
-                dense
-                @blur="applyFilter()"
-                class="inline-block"
-              />
-            </span>
-          </q-th>
-        </template>
-        <template v-slot:body="props">
-          <q-tr
-            :props="props"
-            @click="
-              props.row._new_row && !props.selected
-                ? (props.selected = true)
-                : false
-            "
-          >
-            <q-td
-              v-for="col in props.cols"
-              :key="col.name"
-              :props="props"
-              class="text-center"
-            >
-              <span v-if="col.name === 'num'">
-                <q-btn
-                  v-if="!props.row['watched']"
-                  round
-                  color="primary"
-                  @click="setWatch(props.row['num'].toString())"
-                  icon="visibility_off"
-                  size="xs"
-                  data-cy="set-watch"
-                >
-                  <q-tooltip>Toggle Watch</q-tooltip>
-                </q-btn>
-                <q-btn
-                  v-if="props.row['watched']"
-                  round
-                  color="primary"
-                  @click="clearWatch(props.row['num'].toString())"
-                  icon="visibility"
-                  size="xs"
-                  data-cy="clear-watch"
-                >
-                  <q-tooltip>Toggle Watch</q-tooltip>
-                </q-btn>
-                &nbsp;
-                <router-link
-                  :to="'/ui-spec/' + props.row['num'] + '/' + props.row['ver']"
-                >
-                  {{ props.row["num"] }}/{{ props.row["ver"] }}
-                </router-link>
-                &nbsp;
-                <q-btn
-                  v-if="props.row['state'] === 'Active'"
-                  round
-                  color="primary"
-                  :href="
-                    apiServerHost +
-                    '/file/' +
-                    props.row['num'] +
-                    '/' +
-                    props.row['ver'] +
-                    '?state=Active'
-                  "
-                  target="_blank"
-                  icon="description"
-                  size="xs"
-                  data-cy="open-file"
-                >
-                  <q-tooltip>View first file</q-tooltip>
-                </q-btn>
-              </span>
-              <span v-else-if="col.name === 'sunset_dt'">
-                {{
-                  props.row[col.name]
-                    ? props.row[col.name].substring(0, 10)
-                    : ""
-                }}
-              </span>
-              <span v-else-if="col.name === 'state' && props.row[col.name] === 'Signoff'">
-                {{ props.row['state'] }}
-                <br> Submitted: {{ dispDate(props.row['last_submit_dt']) }}
-                <br> {{ props.row['missing_sigs'] }}
-              </span>
-              <span v-else>{{ props.row[col.name] }}</span>
+
+        <template v-slot:top-row>
+          <q-tr v-show=" filterShow ">
+            <q-td />
+            <q-td dense v-for=" col  in  columns " v-bind:value=" col.name " :key=" col.name ">
+                <q-select
+                v-if="col.name === 'state'"
+                    v-model="filter_state"
+                    data-cy="spec-detail-filter-state"
+                    :options="[
+                    { label: 'Draft', value: 'draft' },
+                    { label: 'Signoff', value: 'signoff' },
+                    { label: 'Active', value: 'active' },
+                    { label: 'Obsolete', value: 'obsolete' },
+                    ]"
+                    multiple
+                    dense
+                    @blur="applyFilter()"
+                    class="inline-block"
+                />
+                <q-input v-else-if="!col.skip_filter" dense v-model.trim="filter[col.name]" :label="col.label" debounce="500" data_cy="filter-field"/>
             </q-td>
           </q-tr>
         </template>
-        <template v-slot:bottom>
-          <q-btn
-            @click="getTableData(page_num - 1)"
-            :disable="page_num == 1"
-            data-cy="data-prev-btn"
-          >
-            {{ "&lt;" }}
-          </q-btn>
-          <q-input
-            input-class="text-right"
-            v-model="page_num"
-            class="page-input"
-            @keydown.enter.prevent="getTableData(page_num)"
-            data-cy="data-page-input"
-          />
-          <div class="num-pages" data-cy="data-num-pages">
-            &nbsp;/ {{ num_pages }}
-          </div>
-          <q-btn
-            @click="getTableData(page_num + 1)"
-            :disable="page_num == num_pages"
-            data-cy="data-next-btn"
-          >
-            {{ ">" }}
-          </q-btn>
-          <q-space />
-          <q-btn
-            color="primary"
-            :href="apiServerHost + '/spec/?output_csv=true' + filter_slug"
-            target="_blank"
-            icon="file_download"
-            data-cy="open-file"
-          />
+        <template v-slot:body-cell-num=" props ">
+          <q-td>
+            <q-btn v-if="!props.row['watched']" round color="primary" @click="setWatch(props.row['num'].toString())"
+                    icon="visibility_off" size="xs" data-cy="set-watch" >
+                <q-tooltip>Toggle Watch</q-tooltip>
+            </q-btn>
+            <q-btn v-if="props.row['watched']" round color="primary" @click="clearWatch(props.row['num'].toString())"
+                    icon="visibility" size="xs" data-cy="clear-watch" >
+                <q-tooltip>Toggle Watch</q-tooltip>
+            </q-btn>
+            &nbsp;
+            <router-link :to="'/ui-spec/' + props.row['num'] + '/' + props.row['ver']">
+                {{ props.row["num"] }}/{{ props.row["ver"] }}
+            </router-link>
+            &nbsp;
+            <q-btn v-if="props.row['state'] === 'Active'" round color="primary"
+                :href="apiServerHost + '/file/' + props.row['num'] + '/' + props.row['ver'] + '?state=Active'"
+                target="_blank" icon="description" size="xs" data-cy="open-file" >
+                <q-tooltip>View first file</q-tooltip>
+            </q-btn>
+          </q-td>
+        </template>
+
+        <template v-slot:body-cell-sunset_dt=" props ">
+          <q-td>
+            {{ props.row['sunset_dt'] ? props.row['sunset_dt'].substring(0, 10) : "" }}
+          </q-td>
+        </template>
+
+        <template v-slot:body-cell-state=" props ">
+          <q-td>
+            <span v-if="props.row['state'] === 'Signoff'">
+                {{ props.row['state'] }}
+                <br> Submitted: {{ dispDate(props.row['last_submit_dt']) }}
+                <br> {{ props.row['missing_sigs'] }}
+            </span>
+            <span v-else>{{ props.row['state'] }}</span>
+          </q-td>
         </template>
       </q-table>
+
       <q-dialog v-model="add_spec">
         <create-spec-dialog
           :createMode="true"
-          @updateTable="getTableData(page_num)"
+          @updateTable=" onCloseDialog() "
         />
       </q-dialog>
     </div>
@@ -216,9 +99,10 @@
 </template>
 
 <script>
-import { apiServerHost, deleteData, dispDate, postData, retrieveData } from "@/utils.js";
+import { qtCsvLink, qtOnRequest } from "@/qtable-incl.js"
+import { apiServerHost, deleteData, postData } from "@/utils.js";
 
-import { ref, onMounted, computed, defineProps, watch } from "vue";
+import { ref, onMounted, computed, } from "vue";
 import { useStore } from "vuex";
 import CreateSpecDialog from "@/views/spec/CreateSpec.vue";
 
@@ -231,119 +115,40 @@ export default {
 </script>
 
 <script setup>
-const rows_per_page = 20;
-
+// Variables required for qtable-incl.js functions and table behavior
+const filter = ref({});
+const filterShow = ref(true);
+const loading = ref(false);
+const pagination = ref({
+  sortBy: 'null',
+  descending: false,
+  page: 1,
+  rowsPerPage: 10,
+  rowsNumber: 0,
+});
+const rows = ref([]);
+const row_key = 'name';
+const tableRef = ref();
+const url = 'spec/';
 const store = useStore();
 
-const rows = ref([]);
-const selected = ref([]);
-
 const add_spec = ref(false);
-const filter = ref({});
 const filter_state = ref([]);
-const filter_slug = ref("");
 const upd_spec = ref(false);
-
-const page_num = ref(1);
-const num_pages = ref();
 
 const isAuthenticated = ref(computed(() => store.getters.authenticated));
 const username = ref(computed(() => store.getters.username));
 
-const props = defineProps({
-  rerender: Boolean,
-});
-
 onMounted(() => {
-  getTableData(1);
+  pagination.value.sortBy = columns[0].field;  // Default sort to first column
+  filter.value = {};
+  tableRef.value.requestServerInteraction();
 });
 
-watch(
-  () => props.rerender,
-  (newVal, oldVal) => {
-    if (newVal === false) {
-      getTableData(page_num.value);
-    }
-  }
-);
-
-async function getTableData(page_number) {
-  add_spec.value = false; // Close Add Spec popup, if open
-  upd_spec.value = false; // Close Update Spec popup, if open
-  let data_url = `spec/?_=_${pagination_slug(page_number)}`;
-  if (filter_slug.value) {
-    data_url = data_url + `${filter_slug.value}`;
-  }
-
-  let data_rows = await retrieveData(data_url);
-  rows.value = formatRows(data_rows["results"]);
-
-  set_pagination_params(page_number, data_rows.count);
-  setSelected();
-}
-
-function pagination_slug(page_number) {
-  return `&limit=${rows_per_page}&offset=${(page_number - 1) * rows_per_page}`;
-}
-
-function set_pagination_params(page_number, num_rows) {
-  if (num_pages.value) {
-    if (page_number > num_pages.value) {
-      page_number = num_pages.value;
-    }
-  }
-  num_pages.value = Math.ceil(num_rows / rows_per_page);
-  page_num.value = page_number;
-}
-
-function formatRows(rows) {
-  return rows;
-}
-
-function getRowIdx(row_num, creation_tm) {
-  for (let i = 0; i < rows.value.length; i++) {
-    let row = rows.value[i];
-    if (row.row_num === row_num && row.creation_tm === creation_tm) {
-      return i;
-    }
-  }
-  return null;
-}
-
-// Data in selected rows is be overwritten when table is rerendered when data is modified
-// So when table is rerendered, the selected row data must be set in the table
-function setSelected() {
-  for (const row of selected.value) {
-    let row_idx = getRowIdx(row.row_num, row.creation_tm);
-    if (row_idx != null) {
-      rows.value[row_idx] = row;
-    }
-  }
-}
-
-async function applyFilter() {
-  filter_slug.value = "";
-  Object.entries(filter.value).forEach((entry) => {
-    const [key, value] = entry;
-    filter_slug.value += "&" + key + "=" + value;
-  });
-  if (filter_state.value.length > 0) {
-    filter_slug.value += "&incl_obsolete=true";
-    filter_slug.value +=
-      "&state=" +
-      filter_state.value
-        .map(function (s) {
-          return s["value"];
-        })
-        .join();
-  }
-  getTableData(1);
-}
-
-async function clearFilter() {
-  filter.value = {};
-  filter_state.value = [];
-  applyFilter();
+function onCloseDialog() {
+  add_spec.value = false;
+  upd_spec.value = false;
+  tableRef.value.requestServerInteraction();
 }
 
 async function setWatch(num) {
@@ -353,7 +158,7 @@ async function setWatch(num) {
     `Set watch on: ${num} successfully.`
   );
   if (res.__resp_status < 300) {
-    getTableData(page_num.value);
+  tableRef.value.requestServerInteraction();
   }
 }
 
@@ -364,8 +169,25 @@ async function clearWatch(num) {
     `Deleted watch on: ${num} successfully.`
   );
   if (res.__resp_status < 300) {
-    getTableData(page_num.value);
+  tableRef.value.requestServerInteraction();
   }
+}
+
+function applyFilter() {
+  delete filter.value.incl_obsolete;
+  delete filter.value.state;
+  if (filter_state.value.length > 0) {
+    filter.value.incl_obsolete="true";
+    filter.value.state = filter_state.value.map(function (s) {return s["value"];}).join();
+  }
+}
+
+// Wrappers for qtable-incl functions
+async function toCSV() {
+  window.open(qtCsvLink(filter, pagination, url), '_blank', 'noreferrer');
+}
+async function qTableOnRequest(props) {
+  qtOnRequest(props, loading, filter, rows, pagination, url, row_key);
 }
 
 const columns = [
@@ -377,7 +199,7 @@ const columns = [
     classes: "tab page-col",
     headerStyle: "font-size:large;",
     style: "width: 15em;",
-    sortable: false,
+    sortable: true,
   },
   {
     name: "title",
@@ -387,7 +209,7 @@ const columns = [
     classes: "tab page-col",
     headerStyle: "font-size:large;",
     style: "width: 15em;",
-    sortable: false,
+    sortable: true,
   },
   {
     name: "doc_type",
@@ -397,7 +219,7 @@ const columns = [
     classes: "tab page-col",
     headerStyle: "font-size:large;",
     style: "width: 15em;",
-    sortable: false,
+    sortable: true,
   },
   {
     name: "department",
@@ -407,7 +229,7 @@ const columns = [
     classes: "tab page-col",
     headerStyle: "font-size:large;",
     style: "width: 15em;",
-    sortable: false,
+    sortable: true,
   },
   {
     name: "location",
@@ -417,7 +239,7 @@ const columns = [
     classes: "tab page-col",
     headerStyle: "font-size:large;",
     style: "width: 15em;",
-    sortable: false,
+    sortable: true,
   },
   {
     name: "keywords",
@@ -427,7 +249,7 @@ const columns = [
     classes: "tab page-col",
     headerStyle: "font-size:large;",
     style: "width: 15em;",
-    sortable: false,
+    sortable: true,
   },
   {
     name: "created_by",
@@ -437,7 +259,7 @@ const columns = [
     classes: "tab page-col",
     headerStyle: "font-size:large;",
     style: "width: 15em;",
-    sortable: false,
+    sortable: true,
   },
   {
     name: "state",
@@ -447,7 +269,7 @@ const columns = [
     classes: "tab page-col",
     headerStyle: "font-size:large;",
     style: "width: 15em;",
-    sortable: false,
+    sortable: true,
   },
   {
     name: "sunset_dt",
@@ -459,43 +281,12 @@ const columns = [
     style: "width: 15em;",
     sortable: false,
   },
+  {
+    // This is required, so it will be used in the GET parameters on the search
+    name: "incl_obsolete",
+    field: "incl_obsolete",
+  },
 ];
+
+const visibleColumns = [ "num",  "title", "doc_type", "department", "location", "keywords", "created_by", "state", "sunset_dt", ];
 </script>
-
-<style scoped>
-.doc-btn {
-  height: 4em;
-  margin: 2vw;
-}
-
-.page-input {
-  width: 4em;
-  margin-left: 2vw;
-  text-align: right;
-}
-
-.num-selected {
-  margin-left: 1vw;
-  font-size: 1.2em;
-  margin-top: 0.7em;
-  font-weight: bold;
-}
-
-.tool-row {
-  margin-bottom: 2vh;
-  margin-top: 1vh;
-}
-
-.col-row-width {
-  min-width: 100%;
-}
-
-.num-pages {
-  margin-right: 1vw;
-  font-size: 1.15em;
-}
-
-.page-title {
-  font-size: 2em;
-}
-</style>

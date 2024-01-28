@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth.models import User
 from rest_framework import status
 from rest_framework.authtoken.models import Token
@@ -49,7 +50,10 @@ class AdminToken(APIView):
 
     def post(self, request, username, format=None):
         try:
-            user = MyLDAPBackend().populate_user(username)
+            if settings.AUTH_LDAP_SERVER_URI is not None and len(settings.AUTH_LDAP_SERVER_URI) > 1: #pragma nocover Only one of these branches can be reasonably tested.
+                user = MyLDAPBackend().populate_user(username)
+            else: #pragma nocover Only one of these branches can be reasonably tested.
+                user = User.objects.filter(username=username).first()
             if user is None:
                 raise ValidationError(
                     {"errorCode": "TOKEN-004", "error": f"Specified user: {username} does not exist."})

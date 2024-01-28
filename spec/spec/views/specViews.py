@@ -1,5 +1,6 @@
 import csv
 import io
+import json
 import os
 import subprocess
 from django.conf import settings
@@ -16,6 +17,8 @@ from rest_framework.response import Response
 from subprocess import run
 
 from proj.util import IsSuperUser
+from spec.views.view_queries.spec_list import SpecListSerializer, getSpecListQuerySet
+from utils.raw_sql import RawSQLPagination
 from ..services import jira
 from ..services.spec_route import specExtend, specReject, specSign, specSubmit
 from ..services.spec_create import specCreate, specImport, specRevise
@@ -23,7 +26,7 @@ from ..services.spec_update import specFileUpload, specUpdate
 from utils.dev_utils import formatError
 
 from ..models import Spec, SpecFile, SpecHist
-from ..serializers.specSerializers import FilePostSerializer, ImportSpecSerializer, SpecCreateSerializer, SpecExtendSerializer, SpecListSerializer, SpecPutSerializer, SpecRejectSerializer, SpecReviseSerializer, SpecDetailSerializer, SpecSignSerializer
+from ..serializers.specSerializers import FilePostSerializer, ImportSpecSerializer, SpecCreateSerializer, SpecExtendSerializer, SpecPutSerializer, SpecRejectSerializer, SpecReviseSerializer, SpecDetailSerializer, SpecSignSerializer
 
 
 def genCsv(request, outFileName, serializer, queryset):
@@ -146,40 +149,41 @@ class SpecList(GenericAPIView):
     }
     """
     permission_classes = [IsAuthenticatedOrReadOnly]
-    queryset = Spec.objects.all()
-    serializer_class = SpecListSerializer
-    search_fields = ('title','keywords')
-
     def get(self, request, num=None, format=None):
         try:
-            queryset = self.queryset
-            queryset = queryset.filter(num = request.GET.get('num')) if request.GET.get('num') else queryset
-            queryset = queryset.filter(title__contains = request.GET.get('title')) if request.GET.get('title') else queryset
-            queryset = queryset.filter(doc_type__name__contains = request.GET.get('doc_type')) if request.GET.get('doc_type') else queryset
-            queryset = queryset.filter(department__name__contains = request.GET.get('department')) if request.GET.get('department') else queryset
-            queryset = queryset.filter(keywords__contains = request.GET.get('keywords')) if request.GET.get('keywords') else queryset
-            queryset = queryset.filter(created_by__username = request.GET.get('created_by')) if request.GET.get('created_by') else queryset
-            queryset = queryset.filter(location__name__contains = request.GET.get('location')) if request.GET.get('location') else queryset
+            reqDict = request.GET.copy()
+            if num:
+                reqDict['num'] = num
 
-            if request.GET.get('state'):
-                state_array = request.GET.get('state').split(",")
-                queryset = queryset.filter(state__in = state_array)
-
-            if num is not None:
-                queryset = queryset.filter(num=num)
+            if 'state' in reqDict:
+                reqDict['state'] = request.GET.get('state').split(",")
 
             if not request.GET.get('incl_obsolete'):
-                queryset = queryset.exclude(state='Obsolete')
-            queryset = queryset.order_by('num', 'ver').select_related()
+                reqDict['not_incl_obsolete'] = '^Obsolete$'
 
+            queryset = getSpecListQuerySet(reqDict)
             # If requested, return the entire data set in a csv file
             if request.GET.get('output_csv'):
-                return genCsv(request, 'spec_list.csv', SpecListSerializer(), queryset)
+                ret_data = queryset.get_all_data()
+                # Watch is a UI focused value.
+                for dicts in ret_data:
+                    dicts["watched"] = False
+                return genCsv(request, 'spec_list.csv', SpecListSerializer(), ret_data)
 
-            # Generate paginated response
-            queryset = self.paginate_queryset(queryset)
-            serializer = SpecListSerializer(queryset, many=True, context={'user':request.user})
-            return self.get_paginated_response(serializer.data)
+            pagination = RawSQLPagination()
+            page = pagination.paginate_queryset(queryset, request)
+            # Need to set a value based on the user making a request.
+            for row in page:
+                watched = False
+                if request.user and row["watched"]:
+                    watched_arr = json.loads(row['watched']) if row['watched'] else []
+                    for w in watched_arr:
+                        if request.user.username == w["username"]:
+                            watched = True
+                row["watched"] = watched
+            serializer = SpecListSerializer(page, many=True)
+            return pagination.get_paginated_response(serializer.data)
+
         except BaseException as be: # pragma: no cover
             formatError(be, "SPEC-SV01")
 
@@ -462,28 +466,24 @@ class SunsetList(APIView):
     permission_classes = [IsAuthenticatedOrReadOnly]
     def get(self, request, num=None, format=None):
         try:
-            queryset = Spec.objects.raw("""
-                select top 1000 s.*
-                from (
-                    select s.*,
-                        (
-                            select max(updDate) from (values (s.approved_dt),(s.sunset_extended_dt)) as updDate(updDate)
-                        ) sunset_base_dt
-                    from spec s
-                    where s.state = 'Active'
-                ) s
-                inner join doc_type dt on s.doc_type_id = dt.name and dt.sunset_interval is not null and dt.sunset_warn is not null
-                where dateadd(second, -(dt.sunset_warn/1000000),
-                        dateadd(second, dt.sunset_interval/1000000, sunset_base_dt ) ) < GETUTCDATE()
-                order by dateadd(second, dt.sunset_interval/1000000, sunset_base_dt )
-            """)
+            reqDict = {'past_warn_date': '^Active$'}
 
-            serializer = SpecListSerializer(queryset, many=True, context={'user':request.user})
-
+            queryset = getSpecListQuerySet(reqDict)
             # If requested, return the entire data set in a csv file
             if request.GET.get('output_csv'):
-                return genCsv(request, 'sunset_list.csv', SpecListSerializer(), queryset)
+                ret_data = queryset.get_all_data()
+                # Watch is a UI focused value.
+                for dicts in ret_data:
+                    dicts["watched"] = False
+                return genCsv(request, 'sunset_list.csv', SpecListSerializer(), ret_data)
 
-            return Response(serializer.data)
+            pagination = RawSQLPagination()
+            page = pagination.paginate_queryset(queryset, request)
+            # Watch is a UI focused value.
+            for dicts in page:
+                dicts["watched"] = False
+            serializer = SpecListSerializer(page, many=True)
+            return pagination.get_paginated_response(serializer.data)
+
         except BaseException as be: # pragma: no cover
             formatError(be, "SPEC-SV21")

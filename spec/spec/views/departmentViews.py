@@ -5,15 +5,17 @@ from rest_framework import status
 from rest_framework.decorators import APIView
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import GenericAPIView
+from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 from spec.views.specViews import genCsv
+from utils import qsUtil
 from utils.dev_utils import formatError
 
 from ..models import  Department
 from ..serializers.departmentSerializers import DepartmentSerializer, DepartmentPostSerializer, DepartmentUpdateSerializer
 
-class DepartmentList(GenericAPIView):
-    """ 
+class DepartmentList(APIView):
+    """
     get:
     Return list of departments
 
@@ -26,22 +28,24 @@ class DepartmentList(GenericAPIView):
     }
     """
     permission_classes = [IsSuperUserOrReadOnly]
-    queryset = Department.objects.all()
-    serializer_class = DepartmentSerializer
-    search_fields = ('name', )
-
     def get(self, request, format=None):
         try:
-            queryset = self.filter_queryset(self.get_queryset())
-            queryset = self.paginate_queryset(queryset.order_by('name'))
-            
-            serializer = DepartmentSerializer(queryset, many=True)
+            depts = Department.objects.all()
+            depts = qsUtil.qsFilter(
+                depts,
+                request.GET,
+                ['name', ],
+                ["name"],
+            )
 
             # If requested, return the entire data set in a csv file
             if request.GET.get('output_csv'):
-                return genCsv(request, 'dept_list.csv', DepartmentSerializer(), queryset)
+                return genCsv(request, 'dept_list.csv', DepartmentSerializer(), depts)
 
-            return self.get_paginated_response(serializer.data)
+            pagination = LimitOffsetPagination()
+            page = pagination.paginate_queryset(depts, request)
+            serializer = DepartmentSerializer(page, many=True)
+            return pagination.get_paginated_response(serializer.data)
         except BaseException as be: # pragma: no cover
             formatError(be, "SPEC-DV01")
 
@@ -100,7 +104,7 @@ class DepartmentDetail(APIView):
                 serializer = DepartmentUpdateSerializer(department, data=request.data)
                 if not serializer.is_valid():
                     raise ValidationError({"errorCode":"SPEC-DV07", "error": "Invalid message format", "schemaErrors":serializer.errors})
-                serializer.save()    
+                serializer.save()
             serializer = DepartmentSerializer(department)
             return Response(serializer.data)
         except BaseException as be: # pragma: no cover
@@ -111,6 +115,6 @@ class DepartmentDetail(APIView):
             with transaction.atomic():
                 department = self.get_object(dept)
                 department.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT) 
+            return Response(status=status.HTTP_204_NO_CONTENT)
         except BaseException as be: # pragma: no cover
             formatError(be, "SPEC-DV09")

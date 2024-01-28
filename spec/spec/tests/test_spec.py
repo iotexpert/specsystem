@@ -360,6 +360,57 @@ class SpecTest(SpecTestCase):
         resp = json.loads(response.content)
         self.assertEqual(resp['error'], f'No active version of Spec ({spec_ids[1]}).')
 
+        # test raw_sql filters
+        response = self.get_request(f'/spec/?title=^CAA')
+        self.assertEqual(response.status_code, 200)
+        resp = json.loads(response.content)
+        self.assertEqual(len(resp['results']), 0)
+
+        response = self.get_request(f'/spec/?title=^&orderBy=badColumn')
+        self.assertEqual(response.status_code, 200)
+        resp = json.loads(response.content)
+        self.assertEqual(len(resp['results']), 2)
+
+        response = self.get_request(f'/spec/?title=!&limit=10')
+        self.assertEqual(response.status_code, 200)
+        resp = json.loads(response.content)
+        self.assertEqual(len(resp['results']), 2)
+
+        response = self.get_request(f'/spec/?title=')
+        self.assertEqual(response.status_code, 200)
+        resp = json.loads(response.content)
+        self.assertEqual(len(resp['results']), 2)
+
+        response = self.get_request(f'/spec/?title=!!')
+        self.assertEqual(response.status_code, 200)
+        resp = json.loads(response.content)
+        self.assertEqual(len(resp['results']), 0)
+
+        response = self.get_request(f'/spec/?title=*')
+        self.assertEqual(response.status_code, 200)
+        resp = json.loads(response.content)
+        self.assertEqual(len(resp['results']), 2)
+
+        response = self.get_request(f'/spec/?title=^$')
+        self.assertEqual(response.status_code, 200)
+        resp = json.loads(response.content)
+        self.assertEqual(len(resp['results']), 2)
+
+        response = self.get_request(f'/spec/?title=$')
+        self.assertEqual(response.status_code, 200)
+        resp = json.loads(response.content)
+        self.assertEqual(len(resp['results']), 2)
+
+        response = self.get_request(f'/spec/?title=Import$')
+        self.assertEqual(response.status_code, 200)
+        resp = json.loads(response.content)
+        self.assertEqual(len(resp['results']), 1)
+
+        response = self.get_request(f'/spec/?title=$&limit=1')
+        self.assertEqual(response.status_code, 200)
+        resp = json.loads(response.content)
+        self.assertEqual(len(resp['results']), 1)
+
     def test_spec_create(self):
         self.post_conf()
 
@@ -568,12 +619,12 @@ class SpecTest(SpecTestCase):
         response = self.get_request(f'/sunset/')
         self.assertEqual(response.status_code, 200)
         resp = json.loads(response.content)
-        self.assertEqual(len(resp), 1)
-        self.assertEqual(resp[0]['num'], spec_num)
-        self.assertEqual(resp[0]['state'], 'Active')
+        self.assertEqual(resp['count'], 1)
+        self.assertEqual(resp['results'][0]['num'], spec_num)
+        self.assertEqual(resp['results'][0]['state'], 'Active')
 
         # Get sunset list to a csv
-        s = resp[0]
+        s = resp['results'][0]
         expected=f'''num,ver,title,doc_type,department,keywords,state,created_by,create_dt,mod_ts,jira,anon_access,reason,approved_dt,sunset_extended_dt,sunset_dt,sunset_warn_dt,location,first_submit_dt,last_submit_dt,reject_cnt,admin_upd_cnt,missing_sigs,watched
 {s["num"]},{s["ver"]},"{s["title"]}",{s["doc_type"]},{s["department"]},{s["keywords"]},{s["state"]},{s["created_by"]},{s["create_dt"]},{s["mod_ts"]},,False,,{s["approved_dt"]},,{s["sunset_dt"]},{s["sunset_warn_dt"]},,,,0,2,,False
 '''
@@ -599,7 +650,7 @@ class SpecTest(SpecTestCase):
         response = self.get_request(f'/sunset/')
         self.assertEqual(response.status_code, 200)
         resp = json.loads(response.content)
-        self.assertEqual(len(resp), 0)
+        self.assertEqual(resp['count'], 0)
 
         # Re-extend sunset
         response = self.post_request(f'/extend/{spec_num}/A', {'comment': 'test sunset extension'}, auth_lvl='USER')
@@ -616,13 +667,11 @@ class SpecTest(SpecTestCase):
         self.assertEqual(response.status_code, 200)
         time.sleep(.01)
 
-        # Get sunset list
-        response = self.get_request(f'/sunset/')
+        # Check Obsoleted
+        response = self.get_request(f'/spec/{spec_num}/A', auth_lvl='USER')
         self.assertEqual(response.status_code, 200)
         resp = json.loads(response.content)
-        self.assertEqual(len(resp), 1)
-        self.assertEqual(resp[0]['num'], spec_num)
-        self.assertEqual(resp[0]['state'], 'Obsolete')
+        self.assertIn(resp['state'], 'Obsolete')
 
         # Extend sunset on obsolete doc
         response = self.post_request(f'/extend/{spec_num}/A', {'comment': 'test sunset extension'}, auth_lvl='USER')
@@ -716,6 +765,12 @@ class SpecTest(SpecTestCase):
         self.assertEqual(response.status_code, 200)
         resp = json.loads(response.content)
         self.assertIn(spec_ids[0], resp['watches'])
+
+        # Verify watched set to true on spec
+        response = self.get_request(f'/spec/?num={spec_ids[0]}', auth_lvl='USER')
+        self.assertEqual(response.status_code, 200)
+        resp = json.loads(response.content)
+        self.assertEqual(resp['results'][0]['watched'], True)
 
         # Add watch, invalid spec
         response = self.post_request(f'/user/watch/{os.getenv("USER_USER")}/000', {}, auth_lvl="USER")

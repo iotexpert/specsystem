@@ -1,3 +1,5 @@
+from django.conf import settings
+from django.contrib.auth.models import User
 from django.test import TransactionTestCase
 import json
 import os
@@ -94,10 +96,16 @@ class SpecTestCase(TransactionTestCase):
         resp = self.client.get('/accounts/login/')
         tok = resp.cookies['csrftoken'].value
 
-        # Login via csrf token + djagno LDAP
-        auth_body = {'username': os.getenv('USER_USER'), 'password': os.getenv('USER_PASSWD')}
-        response = self.client.post('/accounts/login/', auth_body)
-        self.assertEqual(response.status_code, 302)
+        settings.AUTH_LDAP_SERVER_URI = None # Turn off LDAP
+        settings.AUTHENTICATION_BACKENDS = ["django.contrib.auth.backends.ModelBackend",]
+        my_admin = User.objects.create_superuser(username=os.getenv('ADMIN_USER'), password=os.getenv('ADMIN_PASSWD'))
+        my_admin.first_name = 'SPEC-Admin'
+        my_admin.last_name = 'Test User'
+        my_admin.save()
+        my_opr = User.objects.create_user(username=os.getenv('USER_USER'))
+        my_opr.first_name = 'SPEC-User'
+        my_opr.last_name = 'Test'
+        my_opr.save()
 
         # Login via csrf token + djagno LDAP
         auth_body = {'username': os.getenv('ADMIN_USER'), 'password': os.getenv('ADMIN_PASSWD')}
@@ -107,6 +115,7 @@ class SpecTestCase(TransactionTestCase):
         # Set token
         headers = {
                     'Content-Type': 'application/json',
+                    'X-CSRFToken': tok,
                 }
 
         response = self.client.post(f'/auth/token/{os.getenv(f"ADMIN_USER")}', **headers)

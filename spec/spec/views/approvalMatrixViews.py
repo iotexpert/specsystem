@@ -5,15 +5,17 @@ from rest_framework import status
 from rest_framework.decorators import APIView
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import GenericAPIView
+from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 from spec.views.specViews import genCsv
+from utils import qsUtil
 from utils.dev_utils import formatError
 
 from ..models import ApprovalMatrix, ApprovalMatrixSignRole, DepartmentReadRole, Role
 from ..serializers.approvalMatrixSerializers import ApprovalMatrixSerializer, ApprovalMatrixPostSerializer, ApprovalMatrixUpdateSerializer
 
-class ApprovalMatrixList(GenericAPIView):
-    """ 
+class ApprovalMatrixList(APIView):
+    """
     get:
     approvalmatrix/
     Return list of Approval Matricies
@@ -28,22 +30,25 @@ class ApprovalMatrixList(GenericAPIView):
     }
     """
     permission_classes = [IsSuperUserOrReadOnly]
-    queryset = ApprovalMatrix.objects.all()
-    serializer_class = ApprovalMatrixSerializer
-    search_fields = ('doc_type__name','department__name')
 
     def get(self, request, format=None):
         try:
-            queryset = self.filter_queryset(self.get_queryset())
-            queryset = self.paginate_queryset(queryset.order_by('doc_type__name','department__name'))
-            
-            serializer = ApprovalMatrixSerializer(queryset, many=True)
+            approvalMatrixes = ApprovalMatrix.objects.all()
+            approvalMatrixes = qsUtil.qsFilter(
+                approvalMatrixes,
+                request.GET,
+                [{"f": "doc_type", 'e': 'doc_type__name__like'}, {"f": "department", 'e': 'department__name__like'}, ],
+                ["doc_type"],
+            )
 
             # If requested, return the entire data set in a csv file
             if request.GET.get('output_csv'):
-                return genCsv(request, 'approvalmatrix.csv', ApprovalMatrixSerializer(), queryset)
+                return genCsv(request, 'approvalmatrix.csv', ApprovalMatrixSerializer(), approvalMatrixes)
 
-            return self.get_paginated_response(serializer.data)
+            pagination = LimitOffsetPagination()
+            page = pagination.paginate_queryset(approvalMatrixes, request)
+            serializer = ApprovalMatrixSerializer(page, many=True)
+            return pagination.get_paginated_response(serializer.data)
         except BaseException as be: # pragma: no cover
             formatError(be, "SPEC-AV01")
 
@@ -113,6 +118,6 @@ class ApprovalMatrixDetail(APIView):
             with transaction.atomic():
                 apvl_mt = self.get_object(id)
                 apvl_mt.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT) 
+            return Response(status=status.HTTP_204_NO_CONTENT)
         except BaseException as be: # pragma: no cover
             formatError(be, "SPEC-DPV8")
