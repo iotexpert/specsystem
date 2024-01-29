@@ -39,7 +39,7 @@ role_put_1 = {
     'role':'Qual',
     'descr':'Quality - Descr updated',
     'spec_one':True,
-    'users':f'{os.getenv("ADMIN_USER")}'
+    'users':f'{os.getenv("ADMIN_USER")}:Corporate'
 }
 
 role_put_err_1 = {
@@ -202,4 +202,16 @@ approvalmatrix_put_err_4 = {
     "doc_type": doctype_post_1['name'],
     "department": dept_post_0['name'],
     "signRoles": f'{role_post_2["role"]}, BadRole'
+}
+
+loc_post_1 = {
+    'name':'Corporate',
+}
+
+loc_post_2 = {
+    'name':'Corporate-California',
+}
+
+loc_post_3 = {
+    'name':'California',
 }

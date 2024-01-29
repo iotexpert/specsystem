@@ -1,5 +1,8 @@
 import copy
 import json
+import os
+from time import sleep
+from django.conf import settings
 from django.conf import settings
 from utils.test_utils import SpecTestCase
 from . import conf_resources as tr
@@ -12,10 +15,10 @@ class ConfTest(SpecTestCase):
 
         response = self.post_request('/role/', tr.role_post_1, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 201)
-        
+
         response = self.post_request('/role/', tr.role_post_2, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 201)
-        
+
         response = self.post_request('/role/', tr.role_post_3, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 201)
 
@@ -40,7 +43,7 @@ class ConfTest(SpecTestCase):
         self.assert_schema_err(response.content, 'role')
 
         # List all roles with 'Op' in name
-        response = self.get_request('/role/?search=Op')
+        response = self.get_request('/role/?role=Op')
         self.assertEqual(response.status_code, 200)
         resp = json.loads(response.content)
         self.assertEqual(len(resp['results'][0]['user_arr']), 2)
@@ -53,10 +56,10 @@ class ConfTest(SpecTestCase):
         r1 = tr.role_post_2
         r2 = tr.role_post_3
         expected=f'''role,descr,spec_one,users,user_arr
-{r1["role"]},{r1["descr"]},{r1["spec_one"]},"{r1["users"]}","[{{'username': 'SPEC-Admin-Test-User', 'email': '', 'first_name': 'SPEC-Admin', 'last_name': 'Test User'}}, {{'username': 'SPEC-Test-User', 'email': '', 'first_name': 'SPEC-User', 'last_name': 'Test'}}]"
-{r2["role"]},{r2["descr"]},{r2["spec_one"]},{r2["users"]},"[{{'username': 'SPEC-Admin-Test-User', 'email': '', 'first_name': 'SPEC-Admin', 'last_name': 'Test User'}}]"
+{r1["role"]},{r1["descr"]},{r1["spec_one"]},"{r1["users"]}","[{{'username': 'SPEC-Admin-Test-User', 'email': '', 'first_name': 'SPEC-Admin', 'last_name': 'Test User', 'descr': None}}, {{'username': 'SPEC-Test-User', 'email': '', 'first_name': 'SPEC-User', 'last_name': 'Test', 'descr': None}}]"
+{r2["role"]},{r2["descr"]},{r2["spec_one"]},{r2["users"]},"[{{'username': 'SPEC-Admin-Test-User', 'email': '', 'first_name': 'SPEC-Admin', 'last_name': 'Test User', 'descr': None}}]"
 '''
-        response = self.get_request('/role/?search=Op&output_csv=true')
+        response = self.get_request('/role/?role=Op&output_csv=true')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.filename,  'role_list.csv')
         stream = b''.join(response.streaming_content)
@@ -76,6 +79,7 @@ class ConfTest(SpecTestCase):
         self.assertEqual(response.status_code, 200)
         resp = json.loads(response.content)
         self.assertEqual(len(resp['user_arr']), 1)
+        self.assertEqual(resp['user_arr'][0]['descr'], 'Corporate')
         del resp['user_arr']
         self.assertEqual(resp, tr.role_put_1)
 
@@ -99,9 +103,9 @@ class ConfTest(SpecTestCase):
     def test_dept(self):
         # Load needed roles
         response = self.post_request('/role/', tr.role_post_1, auth_lvl='ADMIN')
-        self.assertEqual(response.status_code, 201)        
+        self.assertEqual(response.status_code, 201)
         response = self.post_request('/role/', tr.role_post_2, auth_lvl='ADMIN')
-        self.assertEqual(response.status_code, 201)        
+        self.assertEqual(response.status_code, 201)
         response = self.post_request('/role/', tr.role_post_3, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 201)
 
@@ -110,10 +114,10 @@ class ConfTest(SpecTestCase):
 
         response = self.post_request('/dept/', tr.dept_post_1, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 201)
-        
+
         response = self.post_request('/dept/', tr.dept_post_2, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 201)
-        
+
         response = self.post_request('/dept/', tr.dept_post_3, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 201)
 
@@ -138,7 +142,7 @@ class ConfTest(SpecTestCase):
         self.assert_schema_err(response.content, 'name')
 
         # List all depts with 'Op' in name
-        response = self.get_request('/dept/?search=Op')
+        response = self.get_request('/dept/?name=Op')
         self.assertEqual(response.status_code, 200)
         resp = json.loads(response.content)
         self.assertEqual(resp, self.paginate_results([tr.dept_post_2, tr.dept_post_3]))
@@ -150,7 +154,7 @@ class ConfTest(SpecTestCase):
 {r1["name"]},{r1["readRoles"]}
 {r2["name"]},{r2["readRoles"]}
 '''
-        response = self.get_request('/dept/?search=Op&output_csv=true')
+        response = self.get_request('/dept/?name=Op&output_csv=true')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.filename,  'dept_list.csv')
         stream = b''.join(response.streaming_content)
@@ -193,17 +197,16 @@ class ConfTest(SpecTestCase):
         resp = json.loads(response.content)
         self.assertEqual(resp['error'], f"Department ({tr.dept_put_1['name']}) does not exist.")
 
-
     def test_doctype(self):
         response = self.post_request('/doctype/', tr.doctype_post_1, auth_lvl='USER')
         self.assert_auth_error(response, 'PERM_DENIED')
 
         response = self.post_request('/doctype/', tr.doctype_post_1, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 201)
-        
+
         response = self.post_request('/doctype/', tr.doctype_post_2, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 201)
-        
+
         response = self.post_request('/doctype/', tr.doctype_post_3, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 201)
 
@@ -228,11 +231,11 @@ class ConfTest(SpecTestCase):
         self.assert_schema_err(response.content, 'name')
 
         # List all doctypes with 'Op' in descr
-        response = self.get_request('/doctype/?search=Op')
+        response = self.get_request('/doctype/?descr=Op')
         self.assertEqual(response.status_code, 200)
         resp = json.loads(response.content)
         expected = self.paginate_results([tr.doctype_post_1, tr.doctype_post_2])
-        for e in expected['results']:            
+        for e in expected['results']:
             if e['jira_temp'] is not None and len(e['jira_temp']) > 0 \
                 and settings.JIRA_URI is not None and len(settings.JIRA_URI) > 0:
                 e['jira_temp_url'] = f'{settings.JIRA_URI}/browse/{e["jira_temp"]}'
@@ -247,7 +250,7 @@ class ConfTest(SpecTestCase):
 {r1["name"]},{r1["descr"]},{r1["confidential"]},{r1["jira_temp"]},{r1["sunset_interval"] if r1["sunset_interval"] else ''},{r1["sunset_warn"] if r1["sunset_warn"] else ''},{settings.JIRA_URI}/browse/
 {r2["name"]},{r2["descr"]},{r2["confidential"]},{r2["jira_temp"]},{r2["sunset_interval"] if r2["sunset_interval"] else ''},{r2["sunset_warn"] if r2["sunset_warn"] else ''},{settings.JIRA_URI}/browse/
 '''
-        response = self.get_request('/doctype/?search=Op&output_csv=true')
+        response = self.get_request('/doctype/?descr=Op&output_csv=true')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.filename,  'doc_type_list.csv')
         stream = b''.join(response.streaming_content)
@@ -285,6 +288,50 @@ class ConfTest(SpecTestCase):
         self.assertEqual(resp['sunset_interval'], None)
         self.assertEqual(resp['sunset_warn'], None)
 
+        # Update doctype SOP to not be confidential
+        response = self.put_request(f'/doctype/{tr.doctype_put_2["name"]}', tr.doctype_put_2, auth_lvl='ADMIN')
+        self.assertEqual(response.status_code, 200)
+
+        # Test qsFilter filter calls
+        response = self.get_request('/doctype/?name=obsolete')
+        self.assertEqual(response.status_code, 200)
+        resp = json.loads(response.content)
+        self.assertEqual(len(resp['results']), 0)
+
+        response = self.get_request('/doctype/?name=!')
+        self.assertEqual(response.status_code, 200)
+        resp = json.loads(response.content)
+        self.assertEqual(len(resp['results']), 0)
+
+        response = self.get_request('/doctype/?name=*&confidential=true')
+        self.assertEqual(response.status_code, 200)
+        resp = json.loads(response.content)
+        self.assertEqual(len(resp['results']), 2)
+
+        response = self.get_request('/doctype/?name=!!')
+        self.assertEqual(response.status_code, 200)
+        resp = json.loads(response.content)
+        self.assertEqual(len(resp['results']), 3)
+
+        response = self.get_request('/doctype/?name=^')
+        self.assertEqual(response.status_code, 200)
+        resp = json.loads(response.content)
+        self.assertEqual(len(resp['results']), 3)
+
+        response = self.get_request('/doctype/?name=^$')
+        self.assertEqual(response.status_code, 200)
+        resp = json.loads(response.content)
+        self.assertEqual(len(resp['results']), 3)
+
+        response = self.get_request('/doctype/?name=^HR-Confidential$&orderBy=name')
+        self.assertEqual(response.status_code, 200)
+        resp = json.loads(response.content)
+        self.assertEqual(len(resp['results']), 1)
+
+        response = self.get_request('/doctype/?name=')
+        self.assertEqual(response.status_code, 200)
+        resp = json.loads(response.content)
+        self.assertEqual(len(resp['results']), 3)
 
         # Error: permissions
         response = self.delete_request(f'/doctype/{tr.doctype_put_1["name"]}')
@@ -306,23 +353,23 @@ class ConfTest(SpecTestCase):
     def test_approvalmatrix(self):
         # Load needed roles
         response = self.post_request('/role/', tr.role_post_1, auth_lvl='ADMIN')
-        self.assertEqual(response.status_code, 201)        
+        self.assertEqual(response.status_code, 201)
         response = self.post_request('/role/', tr.role_post_2, auth_lvl='ADMIN')
-        self.assertEqual(response.status_code, 201)        
+        self.assertEqual(response.status_code, 201)
         response = self.post_request('/role/', tr.role_post_3, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 201)
         # Load needed Departments
         response = self.post_request('/dept/', tr.dept_post_0, auth_lvl='ADMIN')
-        self.assertEqual(response.status_code, 201)        
+        self.assertEqual(response.status_code, 201)
         response = self.post_request('/dept/', tr.dept_post_2, auth_lvl='ADMIN')
-        self.assertEqual(response.status_code, 201)        
+        self.assertEqual(response.status_code, 201)
         response = self.post_request('/dept/', tr.dept_post_3, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 201)
         # Load needed Doc Types
         response = self.post_request('/doctype/', tr.doctype_post_1, auth_lvl='ADMIN')
-        self.assertEqual(response.status_code, 201)        
+        self.assertEqual(response.status_code, 201)
         response = self.post_request('/doctype/', tr.doctype_post_2, auth_lvl='ADMIN')
-        self.assertEqual(response.status_code, 201)        
+        self.assertEqual(response.status_code, 201)
         response = self.post_request('/doctype/', tr.doctype_post_3, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 201)
 
@@ -334,12 +381,12 @@ class ConfTest(SpecTestCase):
         self.assertEqual(response.status_code, 201)
         resp = json.loads(response.content)
         am_ids.append(resp['id'])
-        
+
         response = self.post_request('/approvalmatrix/', tr.approvalmatrix_post_2, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 201)
         resp = json.loads(response.content)
         am_ids.append(resp['id'])
-        
+
         response = self.post_request('/approvalmatrix/', tr.approvalmatrix_post_3, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 201)
         resp = json.loads(response.content)
@@ -352,7 +399,7 @@ class ConfTest(SpecTestCase):
         self.assertIn('The fields doc_type, department must make a unique set.', str(response.content))
 
         # List all approvalmatrixs with 'Op' in dept
-        response = self.get_request('/approvalmatrix/?search=Ops')
+        response = self.get_request('/approvalmatrix/?department=Ops')
         self.assertEqual(response.status_code, 200)
         resp = json.loads(response.content)
         r1 = copy.deepcopy(resp['results'][0])
@@ -366,7 +413,7 @@ class ConfTest(SpecTestCase):
 {r1["id"]},{r1["doc_type"]},{r1["department"]},{r1["signRoles"]}
 {r2["id"]},{r2["doc_type"]},{r2["department"]},{r2["signRoles"]}
 '''
-        response = self.get_request('/approvalmatrix/?search=Ops&output_csv=true')
+        response = self.get_request('/approvalmatrix/?department=Ops&output_csv=true')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.filename,  'approvalmatrix.csv')
         stream = b''.join(response.streaming_content)
@@ -424,11 +471,124 @@ class ConfTest(SpecTestCase):
 
     def test_roleSpecOne(self):
         response = self.post_request('/role/', tr.role_post_4, auth_lvl='ADMIN')
-        self.assertEqual(response.status_code, 201)    
+        self.assertEqual(response.status_code, 201)
         resp = json.loads(response.content)
-        self.assertEqual(resp['spec_one'], True)    
+        self.assertEqual(resp['spec_one'], True)
 
         response = self.put_request(f'/role/{tr.role_post_4["role"]}', tr.role_post_4, auth_lvl='ADMIN')
-        self.assertEqual(response.status_code, 200)    
+        self.assertEqual(response.status_code, 200)
         resp = json.loads(response.content)
-        self.assertEqual(resp['spec_one'], True)    
+        self.assertEqual(resp['spec_one'], True)
+
+
+    def test_location(self):
+        response = self.post_request('/loc/', tr.loc_post_1, auth_lvl='USER')
+        self.assert_auth_error(response, 'PERM_DENIED')
+
+        response = self.post_request('/loc/', tr.loc_post_1, auth_lvl='ADMIN')
+        self.assertEqual(response.status_code, 201)
+
+        response = self.post_request('/loc/', tr.loc_post_2, auth_lvl='ADMIN')
+        self.assertEqual(response.status_code, 201)
+
+        response = self.post_request('/loc/', tr.loc_post_3, auth_lvl='ADMIN')
+        self.assertEqual(response.status_code, 201)
+
+        # Duplicate
+        response = self.post_request('/loc/', tr.loc_post_1, auth_lvl='ADMIN')
+        self.assertEqual(response.status_code, 400)
+        resp = json.loads(response.content)
+        self.assertIn('already exists', str(response.content))
+
+        # Get location detail
+        response = self.get_request(f'/loc/{tr.loc_post_1["name"]}')
+        self.assertEqual(response.status_code, 200)
+        resp = json.loads(response.content)
+        self.assertEqual(resp, tr.loc_post_1)
+
+        # Error - invalid character in loc name
+        err_body = copy.deepcopy(tr.loc_post_1)
+        err_body['name'] = 'Name with dollar ($)'
+        response = self.post_request('/loc/', err_body, auth_lvl='ADMIN')
+        self.assertEqual(response.status_code, 400)
+        resp = json.loads(response.content)
+        self.assertIn('Location names cannot contain special characters', resp['error'])
+
+        # Error - loc name missing
+        err_body['name'] = None
+        response = self.post_request('/loc/', err_body, auth_lvl='ADMIN')
+        self.assertEqual(response.status_code, 400)
+        self.assert_schema_err(response.content, 'name')
+
+        # List all locs with 'Corporate' in name
+        response = self.get_request('/loc/?name=Corporate')
+        self.assertEqual(response.status_code, 200)
+        resp = json.loads(response.content)
+        expected = self.paginate_results([tr.loc_post_1, tr.loc_post_2])
+        self.assertEqual(resp, expected)
+
+        # List all locs with 'Corporate' in name to a csv
+        r1 = expected['results'][0]
+        r2 = expected['results'][1]
+        expected=f'''name
+{r1["name"]}
+{r2["name"]}
+'''
+        response = self.get_request('/loc/?name=Corporate&output_csv=true')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.filename,  'loc_list.csv')
+        stream = b''.join(response.streaming_content)
+        self.assertEqual(expected,  stream.decode().replace('\r',''))
+
+        # Error: permissions
+        response = self.delete_request(f'/loc/{tr.loc_post_1["name"]}')
+        self.assert_auth_error(response, 'NO_AUTH')
+        response = self.delete_request(f'/loc/{tr.loc_post_1["name"]}', auth_lvl='USER')
+        self.assert_auth_error(response, 'PERM_DENIED')
+
+        # Delete updated loc
+        response = self.delete_request(f'/loc/{tr.loc_post_1["name"]}', auth_lvl='ADMIN')
+        self.assertEqual(response.status_code, 204)
+
+        # Get deleted loc
+        response = self.get_request(f'/loc/{tr.loc_post_1["name"]}')
+        self.assertEqual(response.status_code, 400)
+        resp = json.loads(response.content)
+        self.assertEqual(resp['error'], f"Location: {tr.loc_post_1['name']} does not exist.")
+
+
+    def test_session_timeout(self):
+        """Test that session timeout is based on inactive time."""
+
+        settings.SESSION_IDLE_TIMEOUT = 2 # Set session timeout to 2 seconds
+        resp = self.client.get('/accounts/login/')
+        tok = resp.cookies['csrftoken'].value
+        # Login via csrf token + djagno LDAP
+        auth_body = {'username': os.getenv('ADMIN_USER'), 'password': os.getenv('ADMIN_PASSWD')}
+        response = self.client.post('/accounts/login/', auth_body)
+        self.assertEqual(response.status_code, 302)
+
+        # Set token
+        headers = {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': tok,
+                }
+
+        response = self.post_request('/role/', tr.role_post_4, auth_lvl='ADMIN')
+        self.assertEqual(response.status_code, 201)
+
+        sleep(1)
+        response = self.client.put(path=f'/role/{tr.role_post_4["role"]}', data=tr.role_post_4, content_type='application/json', **headers)
+        self.assertEqual(response.status_code, 200)
+
+        sleep(1)
+        response = self.client.put(path=f'/role/{tr.role_post_4["role"]}', data=tr.role_post_4, content_type='application/json', **headers)
+        self.assertEqual(response.status_code, 200)
+
+        sleep(1)
+        response = self.client.put(path=f'/role/{tr.role_post_4["role"]}', data=tr.role_post_4, content_type='application/json', **headers)
+        self.assertEqual(response.status_code, 200)
+
+        sleep(3)
+        response = self.client.put(path=f'/role/{tr.role_post_4["role"]}', data=tr.role_post_4, content_type='application/json', **headers)
+        self.assertEqual(response.status_code, 401)

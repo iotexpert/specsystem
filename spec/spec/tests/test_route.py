@@ -46,6 +46,9 @@ class RouteTest(SpecTestCase):
         self.assertEqual(response.status_code, 201)
         response = self.post_request('/approvalmatrix/', conf.approvalmatrix_post_3, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 201)
+        # Load needed Locations
+        response = self.post_request('/loc/', conf.loc_post_1, auth_lvl='ADMIN')
+        self.assertEqual(response.status_code, 201)
 
         # Post spec with no AM
         response = self.post_request('/spec/', spec.spec_post_2, auth_lvl='USER')
@@ -168,7 +171,7 @@ class RouteTest(SpecTestCase):
         response = self.post_request(f'/sign/{spec_ids[0]}/A', spec.sign_post_1, auth_lvl='USER')
         self.assertEqual(response.status_code, 200)
 
-        # Re-ign QUAL sig
+        # Re-sign QUAL sig
         response = self.post_request(f'/sign/{spec_ids[0]}/A', spec.sign_post_1, auth_lvl='USER')
         self.assertEqual(response.status_code, 200)
 
@@ -228,6 +231,18 @@ class RouteTest(SpecTestCase):
         self.assertIn('error', resp)
         self.assertEqual(resp['error'], "Current user SPEC-Test-User is not a delegate for SPEC-Admin-Test-User")
 
+        # List filtered to same spec
+        response = self.get_request(f'/spec/?num={spec_ids[0]}&ver=A')
+        self.assertEqual(response.status_code, 200)
+        resp = json.loads(response.content)
+        self.assertEqual(1, resp["count"])
+        self.assertIsNotNone(resp["results"][0]["first_submit_dt"])
+        self.assertIsNotNone(resp["results"][0]["last_submit_dt"])
+        self.assertGreater(resp["results"][0]["last_submit_dt"], resp["results"][0]["first_submit_dt"])
+        self.assertEqual(1, resp["results"][0]["reject_cnt"])
+        self.assertEqual(0, resp["results"][0]["admin_upd_cnt"])
+        self.assertEqual(resp["results"][0]["missing_sigs"], f"Op_Line1:{os.getenv('ADMIN_USER')}, Op:{os.getenv('ADMIN_USER')}")
+
         # Sign OP sig
         response = self.post_request(f'/sign/{spec_ids[0]}/A', spec.sign_post_2, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 200)
@@ -235,7 +250,7 @@ class RouteTest(SpecTestCase):
         # Add watch, self
         response = self.post_request(f'/user/watch/{os.getenv("USER_USER")}/{spec_ids[0]}', {}, auth_lvl="USER")
         self.assertEqual(response.status_code, 200)
-        
+
         # Empty the test outbox
         mail.outbox = []
 
@@ -359,14 +374,14 @@ class RouteTest(SpecTestCase):
             response = self.post_binary_request(f'/file/{spec.spec_import_post_3["num"]}/{spec.spec_import_post_3["ver"]}', {'file': (fp, 'Text1.docx')}, auth_lvl='USER')
         self.assertEqual(response.status_code, 200)
 
-        # Update spec - Add signers. 
+        # Update spec - Add signers.
         response = self.put_request(f'/spec/{spec.spec_import_post_3["num"]}/{spec.spec_import_post_3["ver"]}', spec.spec_put_5, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 200)
 
         # Submit:
         response = self.post_request(f'/submit/{spec.spec_import_post_3["num"]}/{spec.spec_import_post_3["ver"]}', auth_lvl='USER')
         self.assertEqual(response.status_code, 200)
-        
+
         # Sign QUAL sig in draft state
         response = self.post_request(f'/sign/{spec.spec_import_post_3["num"]}/{spec.spec_import_post_3["ver"]}', spec.sign_post_4, auth_lvl='USER')
         self.assertEqual(response.status_code, 400)

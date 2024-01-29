@@ -2,9 +2,7 @@
 import { Notify } from 'quasar'
 
 export const apiServerHost = process.env.NODE_ENV === 'production' ? '' : 'http://127.0.0.1:8000';
-
 export const metadata_cols = ['row_num', 'creation_tm', '_new_row']
-
 export const data_types = ['string', 'number', 'datetm', 'date']
 
 export async function retrieveData(api) {
@@ -47,7 +45,7 @@ export async function putData(api, body, msg) {
 
 async function sendRequest(url, header, body, method) {
     let res = await window.fetch(url, {
-        method: method, 
+        method: method,
         headers: header,
         credentials: 'include',
         body: body
@@ -59,7 +57,7 @@ export function genCy(prefix, suffix){
   return prefix + '-' + suffix
 }
 
-async function getHeader(){ 
+async function getHeader(){
   let tok = getCookie('csrftoken')
   return {
           'Content-Type': 'application/json',
@@ -138,7 +136,7 @@ export function errorMsgHandler(obj) {
           });
           err = err.join(' | ');
         }
-  
+
         let msg = `${e}: ${err}`;
         return msg
       });
@@ -148,14 +146,14 @@ export function errorMsgHandler(obj) {
     }
   } else {
     return obj;
-  } 
+  }
 }
 
 export function data_page_link(data_page){
     return `${apiServerHost}/data/?doc_type=${data_page}`
 }
 
-export function showNotif (msg, color) {        
+export function showNotif (msg, color) {
     Notify.create({
     message: msg,
     icon: 'announcement',
@@ -166,7 +164,7 @@ export function showNotif (msg, color) {
     })
 }
 
-export function notifyLoginFail (msg) {        
+export function notifyLoginFail (msg) {
   Notify.create({
   message: msg,
   position:'top',

@@ -19,7 +19,7 @@
         </template>
 
         <template v-slot:top-right>
-          <q-btn dense v-show="isAdmin" color="primary" @click="add_ApprovalMatrix = true" icon="add" data-cy="add-row" label="Add Approval Matrix" no-caps/>
+          <q-btn dense v-show="isAdmin" color="primary" @click="add_location = true" icon="add" data-cy="add-row" label="Add Location" no-caps/>
           &nbsp;
           <q-btn dense color="primary" @click=" toCSV() " target="_blank" icon="file_download" data-cy="open-file">
             <q-tooltip>Download to CSV</q-tooltip>
@@ -35,26 +35,26 @@
           </q-tr>
         </template>
         <template v-slot:body-selection=" props ">
-          <q-btn v-if=" isAdmin " @click="deleteSelected(props.row)" color="negative" round size="xs" icon="delete" data-cy="btn-delete_approvalMatrix">
+          <q-btn v-if=" isAdmin " @click="deleteSelected(props.row['name'])" color="negative" round size="xs" icon="delete" data-cy="btn-delete_loc">
             <q-tooltip>Delete</q-tooltip>
           </q-btn>
           &nbsp;
           <q-btn v-if=" isAdmin " @click="updateSelected(props.row)" color="primary" round size="xs" icon="edit"
-            data-cy="btn-open_approvalMatrix_update">
+            data-cy="btn-open_loc_update">
             <q-tooltip>View / Edit</q-tooltip>
           </q-btn>
         </template>
       </q-table>
-      <q-dialog v-model="add_ApprovalMatrix">
-        <create-ApprovalMatrix-dialog
-          :ApprovalMatrixRow="{}"
+      <q-dialog v-model="add_location">
+        <create-location-dialog
+          :locationRow="{}"
           :createMode="true"
           @updateTable=" onCloseDialog() "
         />
       </q-dialog>
-      <q-dialog v-model="upd_ApprovalMatrix">
-        <create-ApprovalMatrix-dialog
-          :ApprovalMatrixRow="ApprovalMatrixRow"
+      <q-dialog v-model="upd_location">
+        <create-location-dialog
+          :locationRow="locationRow"
           :createMode="false"
           @updateTable=" onCloseDialog() "
         />
@@ -69,12 +69,12 @@ import { deleteData } from "@/utils.js";
 
 import { ref, onMounted, computed, } from "vue";
 import { useStore } from "vuex";
-import CreateApprovalMatrixDialog from "@/views/approvalMatrix/CreateApprovalMatrix.vue";
+import CreateLocationDialog from "@/views/location/CreateLocation.vue";
 
 export default {
-  name: "ApprovalMatrixPage",
+  name: "LocationPage",
   components: {
-    CreateApprovalMatrixDialog,
+    CreateLocationDialog,
   },
 };
 </script>
@@ -94,13 +94,14 @@ const pagination = ref({
 const rows = ref([]);
 const row_key = 'name';
 const tableRef = ref();
-const url = 'approvalmatrix/';
+const url = 'loc/';
 
 const store = useStore();
 
-const add_ApprovalMatrix = ref(false);
-const ApprovalMatrixRow = ref();
-const upd_ApprovalMatrix = ref(false);
+const add_location = ref(false);
+const locationRow = ref();
+const upd_location = ref(false);
+
 const isAdmin = ref(computed(() => store.getters.isAdmin));
 
 onMounted(() => {
@@ -110,24 +111,20 @@ onMounted(() => {
 });
 
 function onCloseDialog() {
-  add_ApprovalMatrix.value = false;
-  upd_ApprovalMatrix.value = false;
+  add_location.value = false;
+  upd_location.value = false;
   tableRef.value.requestServerInteraction();
 }
 
-async function deleteSelected(apvlMtRow) {
-  if (
-    !window.confirm(
-      `Delete ApprovalMatrix: ${apvlMtRow["doc_type"]}-${apvlMtRow["department"]}?`
-    )
-  ) {
+async function deleteSelected(location) {
+  if (!window.confirm(`Delete location: ${location}?`)) {
     return;
   }
 
   let res = await deleteData(
-    `approvalmatrix/${apvlMtRow["id"]}`,
+    `loc/${encodeURIComponent(location)}`,
     "{}",
-    `Deleted ApprovalMatrix: ${apvlMtRow["doc_type"]}-${apvlMtRow["department"]} successfully.`
+    `Deleted location: ${location} successfully.`
   );
   if (res.__resp_status < 300) {
     tableRef.value.requestServerInteraction();
@@ -135,8 +132,8 @@ async function deleteSelected(apvlMtRow) {
 }
 
 async function updateSelected(row) {
-  ApprovalMatrixRow.value = row;
-  upd_ApprovalMatrix.value = true;
+  locationRow.value = row;
+  upd_location.value = true;
 }
 
 // Wrappers for qtable-incl functions
@@ -152,35 +149,14 @@ async function qTableOnRequest(props) {
 
 const columns = [
   {
-    name: "doc_type",
+    name: "name",
     align: "center",
-    label: "Doc Type",
-    field: "doc_type",
+    label: "Name",
+    field: "name",
     classes: "tab page-col",
     headerStyle: "font-size:large;",
     style: "width: 15em;",
     sortable: true,
-  },
-  {
-    name: "department",
-    align: "center",
-    label: "Department",
-    field: "department",
-    classes: "tab page-col",
-    headerStyle: "font-size:large;",
-    style: "width: 15em;",
-    sortable: true,
-  },
-  {
-    name: "signRoles",
-    align: "center",
-    label: "Required Signer Roles",
-    field: "signRoles",
-    classes: "tab page-col",
-    headerStyle: "font-size:large;",
-    style: "width: 15em;",
-    sortable: false,
-    skip_filter: true,
   },
 ];
 </script>

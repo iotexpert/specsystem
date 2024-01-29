@@ -51,7 +51,7 @@ class DocType(models.Model):
         if doctype:
             return doctype
         return DocType.objects.create(name=docTypeName)
- 
+
 class Role(models.Model):
     role = models.CharField(primary_key=True, max_length=50)
     descr = models.CharField(max_length=4000, blank=True, null=True)
@@ -67,7 +67,7 @@ class Role(models.Model):
         if not role:
             raise ValidationError({"errorCode":"SPEC-M02", "error": f"Role: {roleName} does not exist."})
         return role
-    
+
     def isMember(self, user):
         for roleUser in self.users.all():
             if user == roleUser.user:
@@ -77,12 +77,15 @@ class Role(models.Model):
 class RoleUser(models.Model):
     role = models.ForeignKey(Role, on_delete=models.CASCADE, related_name='users')
     user = models.ForeignKey(DjangoUser, on_delete=models.CASCADE, related_name='+')
+    descr = models.CharField(max_length=50, blank=True, null=True)
 
     class Meta:
         managed = True
         db_table = 'role_user'
 
     def __str__(self):
+        if self.descr is not None and len(self.descr) > 0:
+            return self.user.username + ':' + self.descr
         return self.user.username
 
 class Department(models.Model):
@@ -101,7 +104,7 @@ class Department(models.Model):
         if not dept:
             raise ValidationError({"errorCode":"SPEC-M03", "error": f"Department: {deptName} does not exist."})
         return dept
-    
+
     @staticmethod
     def lookupOrCreate(deptName):
         deptName=re.sub(r'[^-a-zA-Z0-9_:]','_',deptName) # translate illegal characters to an _
@@ -134,7 +137,7 @@ class Department(models.Model):
             pass
 
         return deptList
-            
+
     def isReader(self, user):
         for dept in self.parents():
             for role in dept.readRoles.all():
@@ -149,7 +152,7 @@ class DepartmentReadRole(models.Model):
     class Meta:
         managed = True
         db_table = 'dept_read_role'
-        
+
     def __str__(self):
         return self.role.role
 
@@ -175,7 +178,7 @@ class ApprovalMatrix(models.Model):
             apvl_mt = ApprovalMatrix.objects.filter(doc_type=doc_type, department=dept).first()
             if apvl_mt:
                 ret = ret + list(apvl_mt.signRoles.all())
-        
+
         return ret
 
 class ApprovalMatrixSignRole(models.Model):
@@ -185,9 +188,34 @@ class ApprovalMatrixSignRole(models.Model):
     class Meta:
         managed = True
         db_table = 'apvl_mt_sign_role'
-        
+
     def __str__(self):
         return self.role.role
+
+class Location(models.Model):
+    name = models.CharField(primary_key=True, max_length=150)
+
+    class Meta:
+        managed = True
+        db_table = 'location'
+
+    @staticmethod
+    def lookup(locName):
+        if locName is None:
+            return None
+        location = Location.objects.filter(name=locName).first()
+        if not location:
+            raise ValidationError({"errorCode":"SPEC-M12", "error": f"Location: {locName} does not exist."})
+        return location
+
+    @staticmethod
+    def lookupOrCreate(locName):
+        if locName is None:
+            return None
+        location = Location.objects.filter(name=locName).first()
+        if location:
+            return location
+        return Location.objects.create(name=locName)
 
 class Spec(models.Model):
     num = models.IntegerField()
@@ -196,6 +224,7 @@ class Spec(models.Model):
     doc_type = models.ForeignKey(DocType, on_delete=models.PROTECT, related_name='+')
     department = models.ForeignKey(Department, on_delete=models.PROTECT, related_name='+')
     keywords = models.CharField(max_length=4000, blank=True, null=True)
+    location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name='+', null=True)
     state = models.CharField(max_length=50)
     created_by = models.ForeignKey(DjangoUser, on_delete=models.PROTECT, related_name='+')
     create_dt = models.DateTimeField()
@@ -226,12 +255,12 @@ class Spec(models.Model):
             return self.sunset_dt - self.doc_type.sunset_warn
         return None
 
-    def checkEditable(self, user):    
+    def checkEditable(self, user):
         if self.state != "Draft" and not user.is_superuser:
             raise ValidationError({"errorCode":"SPEC-M07", "error": f"Spec is not in Draft state, it cannot be edited."})
 
         return
-    
+
     def checkSunset(self):
         """If Active spec is past sunset date, set to Obsolete"""
         if self.state == 'Active':
@@ -261,14 +290,14 @@ class Spec(models.Model):
                 if spec.state != 'Active':
                     raise Spec.DoesNotExist()
             except Spec.DoesNotExist:
-                raise ValidationError({"errorCode":"SPEC-M06", "error": f"No active version of Spec ({num})."})    
+                raise ValidationError({"errorCode":"SPEC-M06", "error": f"No active version of Spec ({num})."})
 
         if not user.is_authenticated and ( not spec.anon_access or spec.state != "Active"):
             raise ValidationError({"errorCode":"SPEC-M08", "error": f"spec {spec.num}-{spec.ver} cannot read without logging in."})
         if spec.doc_type.confidential:
             if not spec.department.isReader(user):
                 if spec.state != "Draft" or user != spec.created_by:
-                    raise ValidationError({"errorCode":"SPEC-M05", "error": f"User {user} cannot read confiential specs in department {spec.department}."})
+                    raise ValidationError({"errorCode":"SPEC-M05", "error": f"User {user} cannot read confidential specs in department {spec.department}."})
         return spec
 
 class SpecSig(models.Model):
@@ -305,7 +334,7 @@ class SpecFile(models.Model):
     class Meta:
         managed = True
         db_table = 'spec_file'
-        unique_together = (('spec', 'filename'),)        
+        unique_together = (('spec', 'filename'),)
 
     @staticmethod
     def lookup(num, ver, fileName, request):
@@ -314,7 +343,7 @@ class SpecFile(models.Model):
         state = request.GET.get('state') if request.GET.get('state') else 'Active'
         if state != spec.state:
             raise ValidationError({"errorCode":"SPEC-M11", "error": f"Spec ({num}/{ver}) is {spec.state}, not in {state} state."})
-       
+
         if fileName is None:
             fileName = "*"
             specFile = spec.files.order_by('seq').first()

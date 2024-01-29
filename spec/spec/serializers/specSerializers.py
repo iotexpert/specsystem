@@ -11,6 +11,7 @@ class ImportSpecSerializer(serializers.Serializer):
     title = serializers.CharField()
     doc_type = serializers.CharField()
     department = serializers.CharField()
+    location = serializers.CharField(required=False, default=None, allow_blank=True, allow_null=True)
     keywords = serializers.CharField(required=False, default=None, allow_blank=True, allow_null=True)
     reason = serializers.CharField(required=False, default=None, allow_blank=True, allow_null=True)
     jira = serializers.CharField(required=False, default=None, allow_blank=True, allow_null=True)
@@ -55,9 +56,9 @@ class SpecDetailSerializer(serializers.ModelSerializer):
     created_by = serializers.StringRelatedField()
     class Meta:
         model = Spec
-        fields = ('num', 'ver', 'title', 'doc_type', 'department', 'keywords', 'state', 'created_by', 
-            'create_dt', 'mod_ts', 'jira', 'anon_access', 'reason', 'approved_dt', 'sunset_extended_dt', 
-            'sunset_dt', 'sunset_warn_dt' )
+        fields = ('num', 'ver', 'title', 'doc_type', 'department', 'keywords', 'state', 'created_by',
+            'create_dt', 'mod_ts', 'jira', 'anon_access', 'reason', 'approved_dt', 'sunset_extended_dt',
+            'sunset_dt', 'sunset_warn_dt', 'location', )
 
     def to_representation(self, value):
         value.checkSunset()
@@ -65,13 +66,13 @@ class SpecDetailSerializer(serializers.ModelSerializer):
         # Sort the related fields
         sigs = value.sigs.order_by('-from_am', 'role', ).all()
         data['sigs'] = SpecSigSerializer(sigs, many=True, context=self.context).data
-        
+
         files = value.files.order_by('seq', ).all()
         data['files'] = SpecFileSerializer(files, many=True, context=self.context).data
-        
+
         refs = value.refs.order_by('num', 'ver', ).all()
         data['refs'] = SpecReferenceSerializer(refs, many=True, context=self.context).data
-        
+
         hist = value.hist.order_by('-mod_ts', '-id', ).all()
         data['hist'] = SpecHistSerializer(hist, many=True, context=self.context).data
 
@@ -85,35 +86,7 @@ class SpecDetailSerializer(serializers.ModelSerializer):
             and settings.JIRA_URI is not None and len(settings.JIRA_URI) > 0:
             data['jira_url'] = f'{settings.JIRA_URI}/browse/{value.jira}'
 
-        return data 
-
-class SpecListSerializer(serializers.ModelSerializer):
-    doc_type = serializers.StringRelatedField()
-    department = serializers.StringRelatedField()
-    created_by = serializers.StringRelatedField()
-    class Meta:
-        model = Spec
-        fields = ('num', 'ver', 'title', 'doc_type', 'department', 'keywords', 'state', 'created_by', 
-            'create_dt', 'mod_ts', 'jira', 'anon_access', 'reason', 'approved_dt', 'sunset_extended_dt', 
-            'sunset_dt', 'sunset_warn_dt' )
-
-    def to_representation(self, value):
-        value.checkSunset()
-        data = super(SpecListSerializer, self).to_representation(value)
-
-        # Property fields are not rendered the same as database fields. So updating the format here.
-        if data["sunset_dt"]:
-            data["sunset_dt"] = data["sunset_dt"].isoformat()
-        if data["sunset_warn_dt"]:
-            data["sunset_warn_dt"] = data["sunset_warn_dt"].isoformat()
-
-        try:
-            user = self.context.get("user")
-            data['watched'] = user.watches.filter(num=value.num).first() != None
-        except:  # AnonymousUser does not have the watches attribute
-            data['watched'] = False
-
-        return data 
+        return data
 
 class SpecCreateSerializer(serializers.Serializer):
     num = serializers.IntegerField(required=False, default=None, allow_null=True)
@@ -123,12 +96,13 @@ class SpecCreateSerializer(serializers.Serializer):
     doc_type = serializers.CharField()
     department = serializers.CharField()
     keywords = serializers.CharField(required=False, default=None, allow_blank=True, allow_null=True)
-        
+    location = serializers.CharField(required=False, default=None, allow_blank=True, allow_null=True)
+
 class SpecSigPutSerializer(serializers.Serializer):
     role = serializers.CharField()
     signer = serializers.CharField(required=False, default=None, allow_blank=True, allow_null=True)
     from_am = serializers.BooleanField(required=False, default=False)
-        
+
 class SpecFilePutSerializer(serializers.Serializer):
     filename = serializers.CharField()
     incl_pdf = serializers.BooleanField(required=False, default=False)
@@ -141,6 +115,7 @@ class SpecPutSerializer(serializers.Serializer):
     doc_type = serializers.CharField()
     department = serializers.CharField()
     keywords = serializers.CharField(required=False, default=None, allow_blank=True, allow_null=True)
+    location = serializers.CharField(required=False, default=None, allow_blank=True, allow_null=True)
     jira = serializers.CharField(required=False, default=None, allow_blank=True, allow_null=True)
     sigs = SpecSigPutSerializer(many=True)
     files = SpecFilePutSerializer(many=True)
@@ -149,7 +124,7 @@ class SpecPutSerializer(serializers.Serializer):
     reason = serializers.CharField(required=False, default=None, allow_blank=True, allow_null=True)
     comment = serializers.CharField(required=False, default=None, allow_blank=True, allow_null=True)
     created_by = serializers.CharField(required=False, default=None, allow_blank=True, allow_null=True)
-        
+
 class FilePostSerializer(serializers.Serializer):
     file = serializers.FileField()
 

@@ -18,6 +18,7 @@ from django.urls import path, include, re_path
 from spec.views.approvalMatrixViews import ApprovalMatrixDetail, ApprovalMatrixList
 from spec.views.docTypeViews import DocTypeDetail, DocTypeList
 from spec.views.departmentViews import DepartmentDetail, DepartmentList
+from spec.views.locationViews import LocationDetail, LocationList
 from spec.views.roleViews import RoleDetail, RoleList
 from spec.views.specViews import HelpFile, ImportSpec, SpecDetail, SpecExtend, SpecFileDetail, SpecList, SpecReject, SpecSign, SpecSubmit, SunsetList
 from spec.views.userViews import UserDetail, UserList, UserWatchView
@@ -40,6 +41,8 @@ urlpatterns = [
     path('file/<num>/<ver>/<fileName>', SpecFileDetail.as_view()),
     path('help/<doc>', HelpFile.as_view()),
     path('importSpec/', ImportSpec.as_view()),
+    path('loc/', LocationList.as_view()),
+    path('loc/<loc>', LocationDetail.as_view()),
     path('reject/<num>/<ver>', SpecReject.as_view()),
     path('role/', RoleList.as_view()),
     path('role/<role>', RoleDetail.as_view()),

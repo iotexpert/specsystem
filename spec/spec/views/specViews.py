@@ -1,6 +1,7 @@
 import csv
+import io
+import json
 import os
-import shutil
 import subprocess
 from django.conf import settings
 from django.db import transaction
@@ -15,7 +16,9 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 from subprocess import run
 
-from proj.util import IsSuperUser, IsSuperUserOrReadOnly
+from proj.util import IsSuperUser
+from spec.views.view_queries.spec_list import SpecListSerializer, getSpecListQuerySet
+from utils.raw_sql import RawSQLPagination
 from ..services import jira
 from ..services.spec_route import specExtend, specReject, specSign, specSubmit
 from ..services.spec_create import specCreate, specImport, specRevise
@@ -23,7 +26,7 @@ from ..services.spec_update import specFileUpload, specUpdate
 from utils.dev_utils import formatError
 
 from ..models import Spec, SpecFile, SpecHist
-from ..serializers.specSerializers import FilePostSerializer, ImportSpecSerializer, SpecCreateSerializer, SpecExtendSerializer, SpecListSerializer, SpecPutSerializer, SpecRejectSerializer, SpecReviseSerializer, SpecDetailSerializer, SpecSignSerializer
+from ..serializers.specSerializers import FilePostSerializer, ImportSpecSerializer, SpecCreateSerializer, SpecExtendSerializer, SpecPutSerializer, SpecRejectSerializer, SpecReviseSerializer, SpecDetailSerializer, SpecSignSerializer
 
 
 def genCsv(request, outFileName, serializer, queryset):
@@ -31,31 +34,21 @@ def genCsv(request, outFileName, serializer, queryset):
     Generate a CSV file with the data from the array of dictionary entries
     Return the file as output.
     """
-    tempFilePath = Path(settings.TEMP_PDF) / str(request.user.username)
-    if tempFilePath.exists(): # pragma nocover
-        shutil.rmtree(tempFilePath)
     try:
-        os.makedirs(tempFilePath)
-        with open(tempFilePath/outFileName, 'w', newline='', encoding='utf-8') as f:
-            w = None
-            for r in queryset:
-                d = serializer.to_representation(r)
-                if not w:
-                    w = csv.DictWriter(f, d.keys())
-                    w.writeheader()
-                w.writerow(d)
+        f = io.StringIO()
+        w = None
+        for r in queryset:
+            d = serializer.to_representation(r)
+            if not w:
+                w = csv.DictWriter(f, d.keys())
+                w.writeheader()
+            w.writerow(d)
 
-        response = FileResponse(open(tempFilePath/outFileName, 'rb'), filename=outFileName)
+        f.seek(0)
+        response = FileResponse(io.BytesIO(f.read().encode('utf8')), filename=outFileName)
         return response
     except BaseException as be: # pragma nocover
-        formatError(be, "SPEC-SV28")    
-    finally:
-        # Clean up the folder, no matter success or failure
-        try:
-            if tempFilePath.exists():
-                shutil.rmtree(tempFilePath)
-        except BaseException as be: # pragma nocover
-            pass
+        formatError(be, "SPEC-SV28")
 
 class HelpFile(APIView):
     """
@@ -77,8 +70,8 @@ class HelpFile(APIView):
             raise ValidationError({
                 "errorCode": "SPEC-SV26", "error":
                 f"Valid help choices are: 'user' for the User Guide, 'admin' for the Admin Guide and 'design' for the High Level Design"})
-        
-        
+
+
         osPdfFileName = os.path.splitext(osFileName)[0]+'.pdf'
         if not Path(osPdfFileName).exists(): # pragma nocover
             p = run([settings.SOFFICE, '--norestore', '--safe-mode', '--view', '--convert-to', 'pdf', '--outdir', str(Path(osFileName).parent), osFileName]
@@ -99,7 +92,7 @@ class HelpFile(APIView):
                 return render(request, 'file_error_page.html', exc.detail, status=400)
 
 class ImportSpec(GenericAPIView):
-    """ 
+    """
     post:
     Used for initial import of specs to specified state with specified dates
 
@@ -109,6 +102,7 @@ class ImportSpec(GenericAPIView):
         "state": "{{State}}",
         "title": "{{Document Name}}",
         "keywords": "",
+        "location": "{{Location}}",
         "doc_type": "{{Document Type}}",
         "department": "{{Department}}",
         "reason": "{{Document Subject}}",
@@ -134,7 +128,7 @@ class ImportSpec(GenericAPIView):
             formatError(be, "SPEC-SV24")
 
 class SpecList(GenericAPIView):
-    """ 
+    """
     get:
     spec/
     spec/<num>
@@ -148,45 +142,48 @@ class SpecList(GenericAPIView):
         "doc_type": "Requirement",
         "department": "IT",
         "keywords": "SPEC",
+        "location": "Corporate",
         "sigs": [{"role": "ITMgr", "signer": "ahawse"}],
         "files": [{"filename": "Req.docx", "seq": 1}],
         "refs": [{"num": 300000, "ver": "A"}]
     }
     """
     permission_classes = [IsAuthenticatedOrReadOnly]
-    queryset = Spec.objects.all()
-    serializer_class = SpecListSerializer
-    search_fields = ('title','keywords')
-
     def get(self, request, num=None, format=None):
         try:
-            queryset = self.queryset
-            queryset = queryset.filter(num = request.GET.get('num')) if request.GET.get('num') else queryset
-            queryset = queryset.filter(title__contains = request.GET.get('title')) if request.GET.get('title') else queryset
-            queryset = queryset.filter(doc_type__name__contains = request.GET.get('doc_type')) if request.GET.get('doc_type') else queryset
-            queryset = queryset.filter(department__name__contains = request.GET.get('department')) if request.GET.get('department') else queryset
-            queryset = queryset.filter(keywords__contains = request.GET.get('keywords')) if request.GET.get('keywords') else queryset
-            queryset = queryset.filter(created_by__username = request.GET.get('created_by')) if request.GET.get('created_by') else queryset
+            reqDict = request.GET.copy()
+            if num:
+                reqDict['num'] = num
 
-            if request.GET.get('state'):
-                state_array = request.GET.get('state').split(",")
-                queryset = queryset.filter(state__in = state_array)
+            if 'state' in reqDict:
+                reqDict['state'] = request.GET.get('state').split(",")
 
-            if num is not None:
-                queryset = queryset.filter(num=num)
-            
-            if not request.GET.get('incl_obsolete'):                
-                queryset = queryset.exclude(state='Obsolete')
-            queryset = queryset.order_by('num', 'ver')
+            if not request.GET.get('incl_obsolete'):
+                reqDict['not_incl_obsolete'] = '^Obsolete$'
 
+            queryset = getSpecListQuerySet(reqDict)
             # If requested, return the entire data set in a csv file
             if request.GET.get('output_csv'):
-                return genCsv(request, 'spec_list.csv', SpecListSerializer(), queryset)
+                ret_data = queryset.get_all_data()
+                # Watch is a UI focused value.
+                for dicts in ret_data:
+                    dicts["watched"] = False
+                return genCsv(request, 'spec_list.csv', SpecListSerializer(), ret_data)
 
-            # Generate paginated response
-            queryset = self.paginate_queryset(queryset)            
-            serializer = SpecListSerializer(queryset, many=True, context={'user':request.user})
-            return self.get_paginated_response(serializer.data)
+            pagination = RawSQLPagination()
+            page = pagination.paginate_queryset(queryset, request)
+            # Need to set a value based on the user making a request.
+            for row in page:
+                watched = False
+                if request.user and row["watched"]:
+                    watched_arr = json.loads(row['watched']) if row['watched'] else []
+                    for w in watched_arr:
+                        if request.user.username == w["username"]:
+                            watched = True
+                row["watched"] = watched
+            serializer = SpecListSerializer(page, many=True)
+            return pagination.get_paginated_response(serializer.data)
+
         except BaseException as be: # pragma: no cover
             formatError(be, "SPEC-SV01")
 
@@ -282,7 +279,7 @@ class SpecDetail(APIView):
                     raise ValidationError({"errorCode":"SPEC-SV22", "error": "Spec is not in Draft state. Cannot delete."})
                 jira.delete(spec)
                 spec.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT) 
+            return Response(status=status.HTTP_204_NO_CONTENT)
         except BaseException as be: # pragma: no cover
             formatError(be, "SPEC-SV09")
 
@@ -306,7 +303,7 @@ class SpecFileDetail(APIView):
 
     delete:
     file/<num>/<ver>/<fileName>
-    Delete file from spec 
+    Delete file from spec
     """
     permission_classes = [IsAuthenticatedOrReadOnly]
 
@@ -358,7 +355,7 @@ class SpecFileDetail(APIView):
                         change_type = 'Admin Update',
                         comment = f'File {fileName} deleted while spec in state: {spec.state}'
                     )
-            return Response(status=status.HTTP_204_NO_CONTENT) 
+            return Response(status=status.HTTP_204_NO_CONTENT)
         except BaseException as be: # pragma: no cover
             formatError(be, "SPEC-SV13")
 
@@ -461,7 +458,7 @@ class SpecExtend(APIView):
             formatError(be, "SPEC-SV20")
 
 class SunsetList(APIView):
-    """ 
+    """
     get:
     sunset/
     Return list of specs approaching sunset date (doc_type has sunset defined and spec is past the warn threshold)
@@ -469,28 +466,24 @@ class SunsetList(APIView):
     permission_classes = [IsAuthenticatedOrReadOnly]
     def get(self, request, num=None, format=None):
         try:
-            queryset = Spec.objects.raw("""
-                select top 1000 s.*
-                from (
-                    select s.*,
-                        (
-                            select max(updDate) from (values (s.approved_dt),(s.sunset_extended_dt)) as updDate(updDate)
-                        ) sunset_base_dt
-                    from spec s
-                    where s.state = 'Active'
-                ) s
-                inner join doc_type dt on s.doc_type_id = dt.name and dt.sunset_interval is not null and dt.sunset_warn is not null
-                where dateadd(second, -(dt.sunset_warn/1000000), 
-                        dateadd(second, dt.sunset_interval/1000000, sunset_base_dt ) ) < GETUTCDATE()
-                order by dateadd(second, dt.sunset_interval/1000000, sunset_base_dt )
-            """)
-            
-            serializer = SpecListSerializer(queryset, many=True, context={'user':request.user})
+            reqDict = {'past_warn_date': '^Active$'}
 
+            queryset = getSpecListQuerySet(reqDict)
             # If requested, return the entire data set in a csv file
             if request.GET.get('output_csv'):
-                return genCsv(request, 'sunset_list.csv', SpecListSerializer(), queryset)
+                ret_data = queryset.get_all_data()
+                # Watch is a UI focused value.
+                for dicts in ret_data:
+                    dicts["watched"] = False
+                return genCsv(request, 'sunset_list.csv', SpecListSerializer(), ret_data)
 
-            return Response(serializer.data)
+            pagination = RawSQLPagination()
+            page = pagination.paginate_queryset(queryset, request)
+            # Watch is a UI focused value.
+            for dicts in page:
+                dicts["watched"] = False
+            serializer = SpecListSerializer(page, many=True)
+            return pagination.get_paginated_response(serializer.data)
+
         except BaseException as be: # pragma: no cover
             formatError(be, "SPEC-SV21")

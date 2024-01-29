@@ -2,6 +2,7 @@ import { createWebHistory, createRouter } from "vue-router";
 import ApprovalMatrixPage from "@/views/approvalMatrix/ApprovalMatrixMain.vue"
 import DepartmentPage from "@/views/department/DepartmentMain.vue"
 import DocTypePage from "@/views/doctype/DocTypeMain.vue"
+import LocationPage from "@/views/location/LocationMain.vue"
 import RolePage from "@/views/role/RoleMain.vue"
 import SpecDetailPage from "@/views/spec/SpecDetail.vue"
 import SpecPage from "@/views/spec/SpecMain.vue"
@@ -28,6 +29,11 @@ const routes = [
     path: '/ui-doctype',
     name: 'Document Type',
     component: DocTypePage
+  },
+  {
+    path: '/ui-loc',
+    name: 'Location',
+    component: LocationPage
   },
   {
     path: '/ui-role',

@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth.models import User as DjangoUser
 from rest_framework.exceptions import ValidationError
 from proj.util import MyLDAPBackend
@@ -8,7 +9,8 @@ class User(DjangoUser):
     def lookup(username):
         user = DjangoUser.objects.filter(username=username).first()
         if not user:
-            user = MyLDAPBackend().populate_user(username)
+            if settings.AUTH_LDAP_SERVER_URI is not None and len(settings.AUTH_LDAP_SERVER_URI) > 1: #pragma nocover Only one of these branches can be reasonably tested.
+                user = MyLDAPBackend().populate_user(username)
         if not user:
             raise ValidationError({"errorCode":"USER-M01", "error": f"User: {username} does not exist."})
         if not user.is_active:
