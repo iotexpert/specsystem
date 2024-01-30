@@ -3,7 +3,7 @@
     <div>
       <q-table dense ref="tableRef" :rows="rows" :columns="columns" :rows-per-page-options="[5, 10, 15, 20, 50, 100, 250]"
         selection="single" v-model:pagination="pagination" :loading="loading" :filter="filter" binary-state-sort
-        @request="qTableOnRequest" :visible-columns="visibleColumns" >
+        :visible-columns="visibleColumns" @request="qTableOnRequest"  >
         <template v-slot:top-left>
           <div>
             <q-btn dense color="primary" round icon="filter_alt" @click="filterShow = !filterShow">
@@ -190,6 +190,9 @@ async function qTableOnRequest(props) {
   qtOnRequest(props, loading, filter, rows, pagination, url, row_key);
 }
 
+// visibleColumns is used to keep incl_obsolete from being displayed
+const visibleColumns = [ "num",  "title", "doc_type", "department", "location", "keywords", "created_by", "state", "sunset_dt",  ];
+
 const columns = [
   {
     name: "num",
@@ -286,7 +289,4 @@ const columns = [
     name: "incl_obsolete",
     field: "incl_obsolete",
   },
-];
-
-const visibleColumns = [ "num",  "title", "doc_type", "department", "location", "keywords", "created_by", "state", "sunset_dt", ];
-</script>
+];</script>
