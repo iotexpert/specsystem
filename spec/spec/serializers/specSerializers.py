@@ -88,54 +88,6 @@ class SpecDetailSerializer(serializers.ModelSerializer):
 
         return data
 
-class SpecListSerializer(serializers.ModelSerializer):
-    doc_type = serializers.StringRelatedField()
-    department = serializers.StringRelatedField()
-    created_by = serializers.StringRelatedField()
-    class Meta:
-        model = Spec
-        fields = ('num', 'ver', 'title', 'doc_type', 'department', 'keywords', 'state', 'created_by',
-            'create_dt', 'mod_ts', 'jira', 'anon_access', 'reason', 'approved_dt', 'sunset_extended_dt',
-            'sunset_dt', 'sunset_warn_dt', 'location', )
-
-    def to_representation(self, value):
-        value.checkSunset()
-        data = super(SpecListSerializer, self).to_representation(value)
-
-        # Property fields are not rendered the same as database fields. So updating the format here.
-        if data["sunset_dt"]:
-            data["sunset_dt"] = data["sunset_dt"].isoformat()
-        if data["sunset_warn_dt"]:
-            data["sunset_warn_dt"] = data["sunset_warn_dt"].isoformat()
-
-        # Need to lookup data from spec hist for reporting
-        submit_dts = value.hist.filter(change_type="Submit").order_by("mod_ts").values_list("mod_ts", flat=True)
-        if len(submit_dts):
-            data['first_submit_dt'] = submit_dts[0].isoformat()
-            data['last_submit_dt'] = submit_dts[len(submit_dts)-1].isoformat()
-        else:
-            data['first_submit_dt'] = None
-            data['last_submit_dt'] = None
-        data['reject_cnt'] = value.hist.filter(change_type="Reject").count()
-        data['admin_upd_cnt'] = value.hist.filter(change_type="Admin Update").count()
-        if value.state == 'Signoff':
-            sigs = value.sigs.filter(signed_dt__isnull=True).select_related().order_by('-from_am', 'role', )
-            sig_strs = []
-            for sig in sigs:
-                signer = sig.signer.username if sig.signer else ''
-                sig_strs.append(f"{sig.role.role}:{signer}")
-            data['missing_sigs'] = ', '.join(sig_strs)
-        else:
-            data['missing_sigs'] = None
-
-        try:
-            user = self.context.get("user")
-            data['watched'] = user.watches.filter(num=value.num).first() != None
-        except:  # AnonymousUser does not have the watches attribute
-            data['watched'] = False
-
-        return data
-
 class SpecCreateSerializer(serializers.Serializer):
     num = serializers.IntegerField(required=False, default=None, allow_null=True)
     ver = serializers.CharField(required=False, default=None, allow_blank=True, allow_null=True, max_length=2)

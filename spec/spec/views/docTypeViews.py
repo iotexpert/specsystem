@@ -4,16 +4,17 @@ from proj.util import IsSuperUserOrReadOnly
 from rest_framework import status
 from rest_framework.decorators import APIView
 from rest_framework.exceptions import ValidationError
-from rest_framework.generics import GenericAPIView
+from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 from spec.views.specViews import genCsv
+from utils import qsUtil
 from utils.dev_utils import formatError
 
 from ..models import  DocType
 from ..serializers.docTypeSerializers import DocTypeSerializer, DocTypePutSerializer
 
-class DocTypeList(GenericAPIView):
-    """ 
+class DocTypeList(APIView):
+    """
     get:
     Return list of DocTypes
 
@@ -30,22 +31,24 @@ class DocTypeList(GenericAPIView):
     }
     """
     permission_classes = [IsSuperUserOrReadOnly]
-    queryset = DocType.objects.all()
-    serializer_class = DocTypeSerializer
-    search_fields = ('name', 'descr', )
-
     def get(self, request, format=None):
         try:
-            queryset = self.filter_queryset(self.get_queryset())
-            queryset = self.paginate_queryset(queryset.order_by('name'))
-            
-            serializer = DocTypeSerializer(queryset, many=True)
+            doc_types = DocType.objects.all()
+            doc_types = qsUtil.qsFilter(
+                doc_types,
+                request.GET,
+                ['name', 'descr', 'jira_temp', {"f": "confidential", "t": bool}],
+                ["name"],
+            )
 
             # If requested, return the entire data set in a csv file
             if request.GET.get('output_csv'):
-                return genCsv(request, 'doc_type_list.csv', DocTypeSerializer(), queryset)
+                return genCsv(request, 'doc_type_list.csv', DocTypeSerializer(), doc_types)
 
-            return self.get_paginated_response(serializer.data)
+            pagination = LimitOffsetPagination()
+            page = pagination.paginate_queryset(doc_types, request)
+            serializer = DocTypeSerializer(page, many=True)
+            return pagination.get_paginated_response(serializer.data)
         except BaseException as be: # pragma: no cover
             formatError(be, "SPEC-DTV01")
 
@@ -72,7 +75,7 @@ class DocTypeDetail(APIView):
 
     put:
     doctype/<doctype>
-    Update <doctype> 
+    Update <doctype>
 
     {
         "name": "WI",
@@ -120,6 +123,6 @@ class DocTypeDetail(APIView):
             with transaction.atomic():
                 doctype = self.get_object(doctype)
                 doctype.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT) 
+            return Response(status=status.HTTP_204_NO_CONTENT)
         except BaseException as be: # pragma: no cover
             formatError(be, "SPEC-DTV09")

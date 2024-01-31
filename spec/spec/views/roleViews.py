@@ -5,16 +5,18 @@ from rest_framework import status
 from rest_framework.decorators import APIView
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import GenericAPIView
+from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 from spec.views.specViews import genCsv
+from utils import qsUtil
 from utils.dev_utils import formatError
 
 from user.models import User
 from ..models import  Role, RoleUser
 from ..serializers.roleSerializers import RoleSerializer, RolePostSerializer, RoleUpdateSerializer
 
-class RoleList(GenericAPIView):
-    """ 
+class RoleList(APIView):
+    """
     get:
     Return list of roles
 
@@ -29,22 +31,24 @@ class RoleList(GenericAPIView):
     }
     """
     permission_classes = [IsSuperUserOrReadOnly]
-    queryset = Role.objects.all()
-    serializer_class = RoleSerializer
-    search_fields = ('role', 'descr', )
-
     def get(self, request, format=None):
         try:
-            queryset = self.filter_queryset(self.get_queryset())
-            queryset = self.paginate_queryset(queryset.order_by('role'))
-            
-            serializer = RoleSerializer(queryset, many=True)
+            roles = Role.objects.all()
+            roles = qsUtil.qsFilter(
+                roles,
+                request.GET,
+                ['role', 'descr', {"f": "spec_one", "t": bool}],
+                ["role"],
+            )
 
             # If requested, return the entire data set in a csv file
             if request.GET.get('output_csv'):
-                return genCsv(request, 'role_list.csv', RoleSerializer(), queryset)
+                return genCsv(request, 'role_list.csv', RoleSerializer(), roles)
 
-            return self.get_paginated_response(serializer.data)
+            pagination = LimitOffsetPagination()
+            page = pagination.paginate_queryset(roles, request)
+            serializer = RoleSerializer(page, many=True)
+            return pagination.get_paginated_response(serializer.data)
         except BaseException as be: # pragma: no cover
             formatError(be, "SPEC-RV01")
 
@@ -116,6 +120,6 @@ class RoleDetail(APIView):
             with transaction.atomic():
                 role = self.get_object(role)
                 role.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT) 
+            return Response(status=status.HTTP_204_NO_CONTENT)
         except BaseException as be: # pragma: no cover
             formatError(be, "SPEC-RV09")

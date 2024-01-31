@@ -1,58 +1,23 @@
 <template>
   <q-page>
     <div>
-      <q-table
-        :rows="rows"
-        :columns="columns"
-        :rows-per-page-options="[0]"
-        data-cy="spec-table"
-      >
-        <template v-slot:header="props">
-          <q-th
-            v-for="col in columns"
-            :key="col.name"
-            :props="props"
-            style="vertical-align: top"
-          >
-            {{ col.label }}
-          </q-th>
+
+      <q-table dense ref="tableRef" :rows="rows" :columns="columns" :rows-per-page-options="[5, 10, 15, 20, 50, 100, 250]"
+        v-model:pagination="pagination" :loading="loading" binary-state-sort
+        @request="qTableOnRequest">
+
+        <template v-slot:top-right>
+          <q-btn dense color="primary" @click=" toCSV() " target="_blank" icon="file_download" data-cy="open-file">
+            <q-tooltip>Download to CSV</q-tooltip>
+          </q-btn>
         </template>
-        <template v-slot:body="props">
-          <q-tr :props="props">
-            <q-td
-              v-for="col in props.cols"
-              :key="col.name"
-              :props="props"
-              class="text-center"
-            >
-              <span v-if="col.name === 'num'">
-                <router-link
-                  :to="'/ui-spec/' + props.row['num'] + '/' + props.row['ver']"
+
+        <template v-slot:body-cell-num=" props ">
+            <router-link
+                    :to="'/ui-spec/' + props.row['num'] + '/' + props.row['ver']"
                 >
-                  {{ props.row["num"] }}/{{ props.row["ver"] }}
+                    {{ props.row["num"] }}/{{ props.row["ver"] }}
                 </router-link>
-              </span>
-              <span
-                v-else-if="
-                  ['sunset_dt', 'approved_dt', 'sunset_extended_dt'].includes(
-                    col.name
-                  )
-                "
-                >{{ dispDate(props.row[col.name]) }}</span
-              >
-              <span v-else>{{ props.row[col.name] }}</span>
-            </q-td>
-          </q-tr>
-        </template>
-        <template v-slot:bottom>
-          <q-space />
-          <q-btn
-            color="primary"
-            :href="apiServerHost + '/sunset/?output_csv=true'"
-            target="_blank"
-            icon="file_download"
-            data-cy="open-file"
-          />
         </template>
       </q-table>
     </div>
@@ -60,7 +25,8 @@
 </template>
 
 <script>
-import { apiServerHost, dispDate, retrieveData } from "@/utils.js";
+import { qtCsvLink, qtOnRequest } from "@/qtable-incl.js"
+import { dispDate } from "@/utils.js";
 
 import { ref, onMounted } from "vue";
 
@@ -70,20 +36,34 @@ export default {
 </script>
 
 <script setup>
+// Variables required for qtable-incl.js functions and table behavior
+const filter = ref({});
+const loading = ref(false);
+const pagination = ref({
+  sortBy: 'null',
+  descending: false,
+  page: 1,
+  rowsPerPage: 10,
+  rowsNumber: 0,
+});
 const rows = ref([]);
+const row_key = 'name';
+const tableRef = ref();
+const url = 'sunset/';
 
 onMounted(() => {
-  getTableData();
+  pagination.value.sortBy = columns[0].field;  // Default sort to first column
+  tableRef.value.requestServerInteraction();
 });
 
-async function getTableData() {
-  let data_rows = await retrieveData("sunset/");
-  rows.value = formatRows(data_rows);
+// Wrappers for qtable-incl functions
+async function toCSV() {
+  window.open(qtCsvLink(filter, pagination, url), '_blank', 'noreferrer');
+}
+async function qTableOnRequest(props) {
+  qtOnRequest(props, loading, filter, rows, pagination, url, row_key);
 }
 
-function formatRows(rows) {
-  return rows;
-}
 
 const columns = [
   {
@@ -91,6 +71,7 @@ const columns = [
     align: "left",
     label: "Sunset",
     field: "sunset_dt",
+    format: (val) => `${dispDate(val)}`,
     classes: "tab page-col",
     headerStyle: "font-size:large;",
     style: "width: 15em;",
@@ -141,6 +122,7 @@ const columns = [
     align: "left",
     label: "Approved",
     field: "approved_dt",
+    format: (val) => `${dispDate(val)}`,
     classes: "tab page-col",
     headerStyle: "font-size:large;",
     style: "width: 15em;",
@@ -151,6 +133,7 @@ const columns = [
     align: "left",
     label: "Extended",
     field: "sunset_extended_dt",
+    format: (val) => `${dispDate(val)}`,
     classes: "tab page-col",
     headerStyle: "font-size:large;",
     style: "width: 15em;",

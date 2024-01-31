@@ -5,14 +5,16 @@ from rest_framework import status
 from rest_framework.decorators import APIView
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import GenericAPIView
+from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 from spec.views.specViews import genCsv
+from utils import qsUtil
 from utils.dev_utils import formatError
 
 from ..models import  Location
 from ..serializers.locationSerializers import LocationSerializer, LocationPostSerializer
 
-class LocationList(GenericAPIView):
+class LocationList(APIView):
     """
     get:
     Return list of locations
@@ -25,22 +27,24 @@ class LocationList(GenericAPIView):
     }
     """
     permission_classes = [IsSuperUserOrReadOnly]
-    queryset = Location.objects.all()
-    serializer_class = LocationSerializer
-    search_fields = ('name', )
-
     def get(self, request, format=None):
         try:
-            queryset = self.filter_queryset(self.get_queryset())
-            queryset = self.paginate_queryset(queryset.order_by('name'))
-
-            serializer = LocationSerializer(queryset, many=True)
+            locations = Location.objects.all()
+            locations = qsUtil.qsFilter(
+                locations,
+                request.GET,
+                ['name', ],
+                ["name"],
+            )
 
             # If requested, return the entire data set in a csv file
             if request.GET.get('output_csv'):
-                return genCsv(request, 'loc_list.csv', LocationSerializer(), queryset)
+                return genCsv(request, 'loc_list.csv', LocationSerializer(), locations)
 
-            return self.get_paginated_response(serializer.data)
+            pagination = LimitOffsetPagination()
+            page = pagination.paginate_queryset(locations, request)
+            serializer = LocationSerializer(page, many=True)
+            return pagination.get_paginated_response(serializer.data)
         except BaseException as be: # pragma: no cover
             formatError(be, "SPEC-LC01")
 

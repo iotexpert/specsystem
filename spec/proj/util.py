@@ -35,14 +35,14 @@ class IsSuperUserOrReadOnly(BasePermission):
 # Custom LDAP code to Consider any user in OU=DisableUsers to be inactive
 from django_auth_ldap.backend import LDAPBackend
 
-class MyLDAPBackend(LDAPBackend):
+class MyLDAPBackend(LDAPBackend): # pragma nocover Requires LDAP configuration (slower running tests and needs external setup)
     """ A custom LDAP authenticate_ldap_user  backend """
     def __set_is_flags(self, user):
         if not user: # pragma nocover
             return None
         # Users in any disabled OU are not active
         user.is_active = True
-        if 'disabled' in str(user.ldap_user.dn).lower(): 
+        if 'disabled' in str(user.ldap_user.dn).lower():
             user.is_active = False # pragma nocover
 
         # Users in SPEC-Admin-<env> are admins
