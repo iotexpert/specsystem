@@ -11,41 +11,47 @@ role_post_1a = {
     'role':'Qual',
     'descr':'Quality',
     'spec_one':False,
-    'users':f'{os.getenv("ADMIN_USER")}'
+    'users':f'{os.getenv("ADMIN_USER")}',
+    'active':False,
 }
 
 role_post_2 = {
     'role':'Op',
     'descr':'Operations',
     'spec_one':True,
-    'users':f'{os.getenv("ADMIN_USER")}, {os.getenv("USER_USER")}'
+    'users':f'{os.getenv("ADMIN_USER")}, {os.getenv("USER_USER")}',
+    'active':False,
 }
 
 role_post_3 = {
     'role':'Op_Line1',
     'descr':'Operations Line 1',
     'spec_one':True,
-    'users':f'{os.getenv("ADMIN_USER")}'
+    'users':f'{os.getenv("ADMIN_USER")}',
+    'active':True,
 }
 
 role_post_4 = {
     'role':'Qual',
     'descr':'Quality',
     'spec_one':False,
-    'users':f''
+    'users':f'',
+    'active':True,
 }
 
 role_put_1 = {
     'role':'Qual',
     'descr':'Quality - Descr updated',
     'spec_one':True,
-    'users':f'{os.getenv("ADMIN_USER")}:Corporate'
+    'users':f'{os.getenv("ADMIN_USER")}:Corporate',
+    'active':False,
 }
 
 role_put_err_1 = {
     'descr':'Quality',
     'spec_one':10,
-    'users':f'{os.getenv("USER_USER")}'
+    'users':f'{os.getenv("USER_USER")}',
+    'active':False,
 }
 
 
@@ -66,27 +72,32 @@ dept_post_1a = {
 
 dept_post_2 = {
     'name':'Ops',
-    'readRoles':role_post_2['role']
+    'readRoles':role_post_2['role'],
+    'active':False,
 }
 
 dept_post_3 = {
     'name':'Ops:Line1',
-    'readRoles':role_post_3['role']
+    'readRoles':role_post_3['role'],
+    'active':True,
 }
 
 dept_put_1 = {
     'name':'Ops',
-    'readRoles':f'{role_post_2["role"]}, {role_post_3["role"]}'
+    'readRoles':f'{role_post_2["role"]}, {role_post_3["role"]}',
+    'active':True,
 }
 
 dept_put_err_1 = {
     'dept':'Quality',
-    'readRoles':{}
+    'readRoles':{},
+    'active':True,
 }
 
 dept_put_err_2 = {
     'dept':'Quality',
-    'readRoles':f'{role_post_1["role"]}, BadRole'
+    'readRoles':f'{role_post_1["role"]}, BadRole',
+    'active':True,
 }
 
 
@@ -96,7 +107,8 @@ doctype_post_1 = {
     'confidential':True,
     'jira_temp':'',
     'sunset_interval': None,
-    'sunset_warn': None
+    'sunset_warn': None,
+    'active':False,
 }
 
 doctype_post_2 = {
@@ -105,7 +117,8 @@ doctype_post_2 = {
     'confidential':False,
     'jira_temp':'',
     'sunset_interval': '1 00:00:00',
-    'sunset_warn': '23:50:00'
+    'sunset_warn': '23:50:00',
+    'active':True,
 }
 
 doctype_post_3 = {
@@ -121,7 +134,8 @@ doctype_put_1 = {
     'confidential':True,
     'jira_temp':'New Jira Template',
     'sunset_interval': '2 00:00:00',
-    'sunset_warn': '20:50:00'
+    'sunset_warn': '20:50:00',
+    'active':False,
 }
 
 doctype_put_2 = {
@@ -130,7 +144,8 @@ doctype_put_2 = {
     'confidential':False,
     'jira_temp':None,
     'sunset_interval': '2 00:00:00',
-    'sunset_warn': '1 23:59:58'
+    'sunset_warn': '1 23:59:58',
+    'active':True,
 }
 
 doctype_put_3 = {
@@ -139,14 +154,16 @@ doctype_put_3 = {
     'confidential':True,
     'jira_temp':'New Jira Template',
     'sunset_interval': '0',
-    'sunset_warn': '0'
+    'sunset_warn': '0',
+    'active':True,
 }
 
 doctype_put_err_1 = {
     'name':'WI',
     'descr':'Work Instruction',
     'confidential':10,
-    'jira_temp':''
+    'jira_temp':'',
+    'active':True,
 }
 
 
@@ -206,12 +223,25 @@ approvalmatrix_put_err_4 = {
 
 loc_post_1 = {
     'name':'Corporate',
+    'active':False,
 }
 
 loc_post_2 = {
     'name':'Corporate-California',
+    'active':True,
 }
 
 loc_post_3 = {
     'name':'California',
+    'active':True,
+}
+
+loc_put_1 = {
+    'name':'Corporate',
+    'active':True,
+}
+
+loc_err_1 = {
+    'name':'Corporate',
+    'active':'Not a boolean',
 }

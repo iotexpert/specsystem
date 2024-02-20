@@ -2,17 +2,20 @@
   <q-card class="dialog-window">
         <q-card-section class="bg-primary text-white row ">
             <div class="text-h4">{{props.createMode?'Create':'Update '+props.doctypeRow['name']}} Document Type</div>
-            <q-btn icon="close" flat round dense data-cy="token-create-close" v-close-popup /> 
+            <q-btn icon="close" flat round dense data-cy="token-create-close" v-close-popup />
         </q-card-section>
         <q-card-section class="q-pt-none">
             <q-input label="Name" v-model.trim="doctype" v-show="props.createMode" data-cy="doctype-create-doctype"/>
             <q-input label="Description" v-model.trim="descr" data-cy="descr-create-doctype"/>
-            <q-select label="Confidential" v-model="confidential" 
+            <q-select label="Confidential" v-model="confidential"
                 :options="[{label:'True',value:true}, {label:'False',value:false}]"
                 data-cy="confidential-create-doctype"/>
             <q-input label="Jira Template" v-model.trim="jira_temp"  data-cy="jira_temp-create-ApprovalMatrix"/>
             <q-input label="Sunset Interval (duration)" v-model.trim="sunset_interval"  data-cy="sunset_interval-create-ApprovalMatrix"/>
             <q-input label="Sunset Warning (duration before sunset)" v-model.trim="sunset_warn"  data-cy="sunset_warn-create-ApprovalMatrix"/>
+            <q-select label="Active" v-model="active"
+                :options="[{label:'True',value:true}, {label:'False',value:false}]"
+                data-cy="active-create-doctype"/>
         </q-card-section>
 
         <q-card-actions class="bg-white text-teal" align="center">
@@ -32,7 +35,7 @@ export default {
 }
 </script>
 
-<script setup>    
+<script setup>
     const props = defineProps({
         doctypeRow: Object,
         createMode: Boolean,
@@ -40,12 +43,13 @@ export default {
 
     const emit = defineEmits(['updateTable'])
 
+    const active = ref({label:'True',value:true})
     const confidential = ref({label:'False',value:false})
     const descr = ref('')
     const doctype = ref('')
     const jira_temp = ref('')
-    const sunset_interval = ref('')
-    const sunset_warn = ref('')
+    const sunset_interval = ref(null)
+    const sunset_warn = ref(null)
 
     async function saveDoctype(){
         const body = {
@@ -55,6 +59,7 @@ export default {
             jira_temp: jira_temp.value,
             sunset_interval: sunset_interval.value,
             sunset_warn: sunset_warn.value,
+            active: active.value.value,
         }
 
         if (props.createMode) {
@@ -79,6 +84,7 @@ export default {
             jira_temp.value = props.doctypeRow['jira_temp']
             sunset_interval.value = props.doctypeRow['sunset_interval']
             sunset_warn.value = props.doctypeRow['sunset_warn']
+            if (props.doctypeRow['active']) {active.value = {label:'True',value:true}} else {active.value={label:'False',value:false}}
         }
     })
 </script>

@@ -6,7 +6,7 @@ from ..models import DocType
 class DocTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = DocType
-        fields = ('name', 'descr', 'confidential', 'jira_temp', 'sunset_interval', 'sunset_warn', )
+        fields = ('name', 'descr', 'confidential', 'jira_temp', 'sunset_interval', 'sunset_warn', 'active', )
 
     def to_representation(self, value):
         data = super(DocTypeSerializer, self).to_representation(value)
@@ -20,12 +20,12 @@ class DocTypeSerializer(serializers.ModelSerializer):
 class DocTypePutSerializer(serializers.ModelSerializer):
     class Meta:
         model = DocType
-        fields = ('descr', 'confidential', 'jira_temp', 'sunset_interval', 'sunset_warn',  )
+        fields = ('descr', 'confidential', 'jira_temp', 'sunset_interval', 'sunset_warn', 'active',  )
 
     def update(self, doctype, validated_data):
         if not validated_data['sunset_interval']:
             validated_data['sunset_interval'] = None
         if not validated_data['sunset_warn']:
             validated_data['sunset_warn'] = None
-            
+
         return super(DocTypePutSerializer, self).update(doctype, validated_data)

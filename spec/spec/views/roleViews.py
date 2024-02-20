@@ -37,7 +37,7 @@ class RoleList(APIView):
             roles = qsUtil.qsFilter(
                 roles,
                 request.GET,
-                ['role', 'descr', {"f": "spec_one", "t": bool}],
+                ['role', 'descr', {"f": "spec_one", "t": bool}, {"f": "active", "t": bool}],
                 ["role"],
             )
 

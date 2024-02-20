@@ -37,7 +37,7 @@ class DocTypeList(APIView):
             doc_types = qsUtil.qsFilter(
                 doc_types,
                 request.GET,
-                ['name', 'descr', 'jira_temp', {"f": "confidential", "t": bool}],
+                ['name', 'descr', 'jira_temp', {"f": "confidential", "t": bool}, {"f": "active", "t": bool}],
                 ["name"],
             )
 

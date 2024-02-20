@@ -158,5 +158,15 @@ const columns = [
     style: "width: 15em;",
     sortable: true,
   },
+  {
+    name: "active",
+    align: "center",
+    label: "Active",
+    field: "active",
+    classes: "tab page-col",
+    headerStyle: "font-size:large;",
+    style: "width: 15em;",
+    sortable: true,
+  },
 ];
 </script>

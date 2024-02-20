@@ -34,7 +34,7 @@ class DepartmentList(APIView):
             depts = qsUtil.qsFilter(
                 depts,
                 request.GET,
-                ['name', ],
+                ['name', {"f": "active", "t": bool}, ],
                 ["name"],
             )
 

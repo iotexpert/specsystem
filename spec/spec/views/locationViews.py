@@ -12,7 +12,7 @@ from utils import qsUtil
 from utils.dev_utils import formatError
 
 from ..models import  Location
-from ..serializers.locationSerializers import LocationSerializer, LocationPostSerializer
+from ..serializers.locationSerializers import LocationPutSerializer, LocationSerializer, LocationPostSerializer
 
 class LocationList(APIView):
     """
@@ -33,7 +33,7 @@ class LocationList(APIView):
             locations = qsUtil.qsFilter(
                 locations,
                 request.GET,
-                ['name', ],
+                ['name', {"f": "active", "t": bool}, ],
                 ["name"],
             )
 
@@ -69,6 +69,14 @@ class LocationDetail(APIView):
     loc/<loc>
     Return details of specific location
 
+    put:
+    loc/<loc>
+    Update <loc>
+
+    {
+        "roles": "role1, role3"
+    }
+
     delete:
     loc/<loc>
     Delete specified <loc> entry
@@ -81,6 +89,19 @@ class LocationDetail(APIView):
             return Response(serializer.data)
         except BaseException as be: # pragma: no cover
             formatError(be, "SPEC-LC06")
+
+    def put(self, request, loc, format=None):
+        try:
+            with transaction.atomic():
+                location = Location.lookup(loc)
+                serializer = LocationPutSerializer(location, data=request.data)
+                if not serializer.is_valid():
+                    raise ValidationError({"errorCode":"SPEC-DTV07", "error": "Invalid message format", "schemaErrors":serializer.errors})
+                location = serializer.save()
+            serializer = LocationSerializer(location)
+            return Response(serializer.data)
+        except BaseException as be: # pragma: no cover
+            formatError(be, "SPEC-DTV08")
 
     def delete(self, request, loc, format=None):
         try:

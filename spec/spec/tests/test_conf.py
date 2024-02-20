@@ -55,9 +55,9 @@ class ConfTest(SpecTestCase):
         # List all roles with 'Op' in name to a csv
         r1 = tr.role_post_2
         r2 = tr.role_post_3
-        expected=f'''role,descr,spec_one,users,user_arr
-{r1["role"]},{r1["descr"]},{r1["spec_one"]},"{r1["users"]}","[{{'username': 'SPEC-Admin-Test-User', 'email': '', 'first_name': 'SPEC-Admin', 'last_name': 'Test User', 'descr': None}}, {{'username': 'SPEC-Test-User', 'email': '', 'first_name': 'SPEC-User', 'last_name': 'Test', 'descr': None}}]"
-{r2["role"]},{r2["descr"]},{r2["spec_one"]},{r2["users"]},"[{{'username': 'SPEC-Admin-Test-User', 'email': '', 'first_name': 'SPEC-Admin', 'last_name': 'Test User', 'descr': None}}]"
+        expected=f'''role,descr,spec_one,users,active,user_arr
+{r1["role"]},{r1["descr"]},{r1["spec_one"]},"{r1["users"]}",{r1["active"]},"[{{'username': 'SPEC-Admin-Test-User', 'email': '', 'first_name': 'SPEC-Admin', 'last_name': 'Test User', 'descr': None}}, {{'username': 'SPEC-Test-User', 'email': '', 'first_name': 'SPEC-User', 'last_name': 'Test', 'descr': None}}]"
+{r2["role"]},{r2["descr"]},{r2["spec_one"]},{r2["users"]},{r2["active"]},"[{{'username': 'SPEC-Admin-Test-User', 'email': '', 'first_name': 'SPEC-Admin', 'last_name': 'Test User', 'descr': None}}]"
 '''
         response = self.get_request('/role/?role=Op&output_csv=true')
         self.assertEqual(response.status_code, 200)
@@ -150,9 +150,9 @@ class ConfTest(SpecTestCase):
         # Get sunset list to a csv
         r1 = tr.dept_post_2
         r2 = tr.dept_post_3
-        expected=f'''name,readRoles
-{r1["name"]},{r1["readRoles"]}
-{r2["name"]},{r2["readRoles"]}
+        expected=f'''name,readRoles,active
+{r1["name"]},{r1["readRoles"]},{r1["active"]}
+{r2["name"]},{r2["readRoles"]},{r2["active"]}
 '''
         response = self.get_request('/dept/?name=Op&output_csv=true')
         self.assertEqual(response.status_code, 200)
@@ -246,9 +246,9 @@ class ConfTest(SpecTestCase):
         # List all doctypes with 'Op' in descr to a csv
         r1 = expected['results'][0]
         r2 = expected['results'][1]
-        expected=f'''name,descr,confidential,jira_temp,sunset_interval,sunset_warn,jira_temp_url_base
-{r1["name"]},{r1["descr"]},{r1["confidential"]},{r1["jira_temp"]},{r1["sunset_interval"] if r1["sunset_interval"] else ''},{r1["sunset_warn"] if r1["sunset_warn"] else ''},{settings.JIRA_URI}/browse/
-{r2["name"]},{r2["descr"]},{r2["confidential"]},{r2["jira_temp"]},{r2["sunset_interval"] if r2["sunset_interval"] else ''},{r2["sunset_warn"] if r2["sunset_warn"] else ''},{settings.JIRA_URI}/browse/
+        expected=f'''name,descr,confidential,jira_temp,sunset_interval,sunset_warn,active,jira_temp_url_base
+{r1["name"]},{r1["descr"]},{r1["confidential"]},{r1["jira_temp"]},{r1["sunset_interval"] if r1["sunset_interval"] else ''},{r1["sunset_warn"] if r1["sunset_warn"] else ''},{r1["active"]},{settings.JIRA_URI}/browse/
+{r2["name"]},{r2["descr"]},{r2["confidential"]},{r2["jira_temp"]},{r2["sunset_interval"] if r2["sunset_interval"] else ''},{r2["sunset_warn"] if r2["sunset_warn"] else ''},{r2["active"]},{settings.JIRA_URI}/browse/
 '''
         response = self.get_request('/doctype/?descr=Op&output_csv=true')
         self.assertEqual(response.status_code, 200)
@@ -530,9 +530,9 @@ class ConfTest(SpecTestCase):
         # List all locs with 'Corporate' in name to a csv
         r1 = expected['results'][0]
         r2 = expected['results'][1]
-        expected=f'''name
-{r1["name"]}
-{r2["name"]}
+        expected=f'''name,active
+{r1["name"]},{r1["active"]}
+{r2["name"]},{r2["active"]}
 '''
         response = self.get_request('/loc/?name=Corporate&output_csv=true')
         self.assertEqual(response.status_code, 200)
@@ -545,6 +545,21 @@ class ConfTest(SpecTestCase):
         self.assert_auth_error(response, 'NO_AUTH')
         response = self.delete_request(f'/loc/{tr.loc_post_1["name"]}', auth_lvl='USER')
         self.assert_auth_error(response, 'PERM_DENIED')
+
+        # Update location
+        response = self.put_request(f'/loc/{tr.loc_put_1["name"]}', tr.loc_put_1, auth_lvl='ADMIN')
+        self.assertEqual(response.status_code, 200)
+
+        # Get location detail
+        response = self.get_request(f'/loc/{tr.loc_put_1["name"]}')
+        self.assertEqual(response.status_code, 200)
+        resp = json.loads(response.content)
+        self.assertEqual(resp, tr.loc_put_1)
+
+        # Error: Update doctype with active as a number
+        response = self.put_request(f'/loc/{tr.loc_err_1["name"]}', tr.loc_err_1, auth_lvl='ADMIN')
+        self.assertEqual(response.status_code, 400)
+        self.assert_schema_err(response.content, 'active')
 
         # Delete updated loc
         response = self.delete_request(f'/loc/{tr.loc_post_1["name"]}', auth_lvl='ADMIN')
