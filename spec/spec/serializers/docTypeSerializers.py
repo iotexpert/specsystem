@@ -4,9 +4,11 @@ from rest_framework import serializers
 from ..models import DocType
 
 class DocTypeSerializer(serializers.ModelSerializer):
+    jira_temp_url = serializers.CharField(read_only=True)
+    jira_temp_url_base = serializers.CharField(read_only=True)
     class Meta:
         model = DocType
-        fields = ('name', 'descr', 'confidential', 'jira_temp', 'sunset_interval', 'sunset_warn', 'active', )
+        fields = ('name', 'descr', 'confidential', 'jira_temp', 'sunset_interval', 'sunset_warn', 'active', 'jira_temp_url', 'jira_temp_url_base')
 
     def to_representation(self, value):
         data = super(DocTypeSerializer, self).to_representation(value)

@@ -1,3 +1,4 @@
+import collections.abc
 import re
 from django.db import transaction
 from proj.util import IsSuperUserOrReadOnly
@@ -55,14 +56,23 @@ class RoleList(APIView):
     def post(self, request, *args, **kwargs):
         try:
             with transaction.atomic():
-                serializer = RolePostSerializer(data=request.data)
-                if not serializer.is_valid():
-                    raise ValidationError({"errorCode":"SPEC-RV03", "error": "Invalid message format", "schemaErrors":serializer.errors})
-                if re.search(r'[^-a-zA-Z0-9_:]+',serializer.validated_data["role"]):
-                    raise ValidationError({"errorCode":"SPEC-RV02", "error": "Role names cannot contain special characters, including: space, comma, tab, semicolon and slash"})
-                role = serializer.save()
-            serializer = RoleSerializer(role)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+                req = request.data
+                if not isinstance(req, collections.abc.Sequence):
+                    req = [req]
+                for r in req:
+                    role = None
+                    if 'role' in r:
+                        role = Role.objects.filter(role=r['role']).first()
+                    if role:
+                        serializer = RoleUpdateSerializer(role, data=r)
+                    else:
+                        serializer = RolePostSerializer(role, data=r)
+                    if not serializer.is_valid():
+                        raise ValidationError({"errorCode":"SPEC-RV03", "error": "Invalid message format", "schemaErrors":serializer.errors})
+                    if re.search(r'[^-a-zA-Z0-9_:]+',r["role"]):
+                        raise ValidationError({"errorCode":"SPEC-RV02", "error": "Role names cannot contain special characters, including: space, comma, tab, semicolon and slash"})
+                    role = serializer.save()
+            return Response(status=status.HTTP_201_CREATED)
         except BaseException as be: # pragma: no cover
             formatError(be, "SPEC-RV04")
 

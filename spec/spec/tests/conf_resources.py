@@ -57,17 +57,20 @@ role_put_err_1 = {
 
 dept_post_0 = {
     'name':'__Generic__',
-    'readRoles':role_post_1['role']
+    'readRoles':role_post_1['role'],
+    'active':True,
 }
 
 dept_post_1 = {
     'name':'Quality',
-    'readRoles':role_post_1['role']
+    'readRoles':role_post_1['role'],
+    'active':False,
 }
 
 dept_post_1a = {
     'name':'Quality',
-    'readRoles':role_post_1a['role']
+    'readRoles':role_post_1a['role'],
+    'active':True,
 }
 
 dept_post_2 = {
@@ -111,6 +114,16 @@ doctype_post_1 = {
     'active':False,
 }
 
+doctype_post_1a = {
+    'name':'SOP',
+    'descr':'Standard Operating Procedure - Op',
+    'confidential':True,
+    'jira_temp':'',
+    'sunset_interval': None,
+    'sunset_warn': None,
+    'active':True,
+}
+
 doctype_post_2 = {
     'name':'WI',
     'descr':'Work Instruction - Op',
@@ -125,7 +138,8 @@ doctype_post_3 = {
     'name':'HR-Confidential',
     'descr':'Confidential HR policy',
     'confidential':True,
-    'jira_temp':'SPEC-2'
+    'jira_temp':'SPEC-2',
+    'active':True,
 }
 
 doctype_put_1 = {
@@ -227,6 +241,11 @@ loc_post_1 = {
 }
 
 loc_post_2 = {
+    'name':'Corporate-California',
+    'active':False,
+}
+
+loc_post_2a = {
     'name':'Corporate-California',
     'active':True,
 }

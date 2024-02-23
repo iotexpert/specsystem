@@ -44,6 +44,7 @@ class RolePostSerializer(serializers.ModelSerializer):
         return role
 
 def createRoleUsers(role, user_str):
+    user_str = user_str if user_str else ''
     RoleUser.objects.filter(role=role).delete()
     users = re.split(r"[\s;,]+", user_str)
     for username in users:
@@ -59,7 +60,7 @@ class RoleUpdateSerializer(serializers.Serializer):
     descr = serializers.CharField(allow_null=True)
     spec_one = serializers.BooleanField()
     active = serializers.BooleanField()
-    users = serializers.CharField(required=False, default=None, allow_blank=True, allow_null=True)
+    users = serializers.CharField(required=False, default='', allow_blank=True, allow_null=True)
 
     def update(self, role, validated_data):
         role.descr = validated_data["descr"]
