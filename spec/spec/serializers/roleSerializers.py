@@ -8,7 +8,7 @@ class RoleSerializer(serializers.ModelSerializer):
     users = serializers.StringRelatedField(many=True)
     class Meta:
         model = Role
-        fields = ('role', 'descr', 'spec_one', 'users', )
+        fields = ('role', 'descr', 'spec_one', 'users', 'active', )
 
     def to_representation(self, value):
         data = super(RoleSerializer, self).to_representation(value)
@@ -28,7 +28,7 @@ class RolePostSerializer(serializers.ModelSerializer):
     users = serializers.CharField(required=False, default=None, allow_blank=True, allow_null=True)
     class Meta:
         model = Role
-        fields = ('role', 'descr', 'spec_one', 'users', )
+        fields = ('role', 'descr', 'spec_one', 'users', 'active', )
 
     def create(self, validated_data):
         role_user_data = validated_data.pop("users")
@@ -44,6 +44,7 @@ class RolePostSerializer(serializers.ModelSerializer):
         return role
 
 def createRoleUsers(role, user_str):
+    user_str = user_str if user_str else ''
     RoleUser.objects.filter(role=role).delete()
     users = re.split(r"[\s;,]+", user_str)
     for username in users:
@@ -58,11 +59,13 @@ def createRoleUsers(role, user_str):
 class RoleUpdateSerializer(serializers.Serializer):
     descr = serializers.CharField(allow_null=True)
     spec_one = serializers.BooleanField()
-    users = serializers.CharField(required=False, default=None, allow_blank=True, allow_null=True)
+    active = serializers.BooleanField()
+    users = serializers.CharField(required=False, default='', allow_blank=True, allow_null=True)
 
     def update(self, role, validated_data):
         role.descr = validated_data["descr"]
         role.spec_one = validated_data["spec_one"]
+        role.active = validated_data["active"]
         role.save()
 
         createRoleUsers(role, validated_data["users"])

@@ -112,13 +112,13 @@ export default {
     })
 
     async function loadLists() {
-        let data_rows = await retrieveData('doctype/?limit=1000');
+        let data_rows = await retrieveData('doctype/?active=true&limit=1000');
         doc_typeList.value = data_rows['results'].map((e) => {return ({label:e['name'],value:e['name']})})
 
-        data_rows = await retrieveData('dept/?limit=1000');
+        data_rows = await retrieveData('dept/?active=true&limit=1000');
         deptList.value = data_rows['results'].map((e) => {return ({label:e['name'],value:e['name']})})
 
-        data_rows = await retrieveData('loc/?limit=1000');
+        data_rows = await retrieveData('loc/?active=true&limit=1000');
         locList.value = data_rows['results'].map((e) => {return ({label:e['name'],value:e['name']})})
     }
 </script>

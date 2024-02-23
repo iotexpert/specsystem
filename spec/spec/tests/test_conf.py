@@ -22,11 +22,15 @@ class ConfTest(SpecTestCase):
         response = self.post_request('/role/', tr.role_post_3, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 201)
 
-        # Duplicate
-        response = self.post_request('/role/', tr.role_post_1, auth_lvl='ADMIN')
-        self.assertEqual(response.status_code, 400)
+        # Duplicate - Updates existing record
+        response = self.post_request('/role/', tr.role_post_1a, auth_lvl='ADMIN')
+        self.assertEqual(response.status_code, 201)
+        response = self.get_request(f'/role/{tr.role_post_1a["role"]}')
+        self.assertEqual(response.status_code, 200)
         resp = json.loads(response.content)
-        self.assertIn('already exists', str(response.content))
+        resp['users'] = resp['user_arr'][0]['username']
+        resp.pop('user_arr')
+        self.assertEqual(resp, tr.role_post_1a)
 
         # Error - invalid character in role name
         err_body = copy.deepcopy(tr.role_post_1)
@@ -55,9 +59,9 @@ class ConfTest(SpecTestCase):
         # List all roles with 'Op' in name to a csv
         r1 = tr.role_post_2
         r2 = tr.role_post_3
-        expected=f'''role,descr,spec_one,users,user_arr
-{r1["role"]},{r1["descr"]},{r1["spec_one"]},"{r1["users"]}","[{{'username': 'SPEC-Admin-Test-User', 'email': '', 'first_name': 'SPEC-Admin', 'last_name': 'Test User', 'descr': None}}, {{'username': 'SPEC-Test-User', 'email': '', 'first_name': 'SPEC-User', 'last_name': 'Test', 'descr': None}}]"
-{r2["role"]},{r2["descr"]},{r2["spec_one"]},{r2["users"]},"[{{'username': 'SPEC-Admin-Test-User', 'email': '', 'first_name': 'SPEC-Admin', 'last_name': 'Test User', 'descr': None}}]"
+        expected=f'''role,descr,spec_one,users,active,user_arr
+{r1["role"]},{r1["descr"]},{r1["spec_one"]},"{r1["users"]}",{r1["active"]},"[{{'username': 'SPEC-Admin-Test-User', 'email': '', 'first_name': 'SPEC-Admin', 'last_name': 'Test User', 'descr': None}}, {{'username': 'SPEC-Test-User', 'email': '', 'first_name': 'SPEC-User', 'last_name': 'Test', 'descr': None}}]"
+{r2["role"]},{r2["descr"]},{r2["spec_one"]},{r2["users"]},{r2["active"]},"[{{'username': 'SPEC-Admin-Test-User', 'email': '', 'first_name': 'SPEC-Admin', 'last_name': 'Test User', 'descr': None}}]"
 '''
         response = self.get_request('/role/?role=Op&output_csv=true')
         self.assertEqual(response.status_code, 200)
@@ -121,11 +125,15 @@ class ConfTest(SpecTestCase):
         response = self.post_request('/dept/', tr.dept_post_3, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 201)
 
-        # Duplicate
-        response = self.post_request('/dept/', tr.dept_post_1, auth_lvl='ADMIN')
-        self.assertEqual(response.status_code, 400)
+        # Duplicate - Treats as an update
+        response = self.post_request('/dept/', tr.dept_post_1a, auth_lvl='ADMIN')
+        self.assertEqual(response.status_code, 201)
+
+        # Get updated dept
+        response = self.get_request(f'/dept/{tr.dept_post_1a["name"]}')
+        self.assertEqual(response.status_code, 200)
         resp = json.loads(response.content)
-        self.assertIn('already exists', str(response.content))
+        self.assertEqual(resp, tr.dept_post_1a)
 
         # Error - invalid character in dept name
         err_body = copy.deepcopy(tr.dept_post_1)
@@ -150,9 +158,9 @@ class ConfTest(SpecTestCase):
         # Get sunset list to a csv
         r1 = tr.dept_post_2
         r2 = tr.dept_post_3
-        expected=f'''name,readRoles
-{r1["name"]},{r1["readRoles"]}
-{r2["name"]},{r2["readRoles"]}
+        expected=f'''name,readRoles,active
+{r1["name"]},{r1["readRoles"]},{r1["active"]}
+{r2["name"]},{r2["readRoles"]},{r2["active"]}
 '''
         response = self.get_request('/dept/?name=Op&output_csv=true')
         self.assertEqual(response.status_code, 200)
@@ -210,11 +218,15 @@ class ConfTest(SpecTestCase):
         response = self.post_request('/doctype/', tr.doctype_post_3, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 201)
 
-        # Duplicate
-        response = self.post_request('/doctype/', tr.doctype_post_1, auth_lvl='ADMIN')
-        self.assertEqual(response.status_code, 400)
+        # Duplicate - Treats as an update
+        response = self.post_request('/doctype/', tr.doctype_post_1a, auth_lvl='ADMIN')
+        self.assertEqual(response.status_code, 201)
+
+        response = self.get_request(f'/doctype/{tr.doctype_post_1a["name"]}')
+        self.assertEqual(response.status_code, 200)
         resp = json.loads(response.content)
-        self.assertIn('already exists', str(response.content))
+        resp.pop('jira_temp_url_base', None)
+        self.assertEqual(resp, tr.doctype_post_1a)
 
         # Error - invalid character in doctype name
         err_body = copy.deepcopy(tr.doctype_post_1)
@@ -234,7 +246,7 @@ class ConfTest(SpecTestCase):
         response = self.get_request('/doctype/?descr=Op')
         self.assertEqual(response.status_code, 200)
         resp = json.loads(response.content)
-        expected = self.paginate_results([tr.doctype_post_1, tr.doctype_post_2])
+        expected = self.paginate_results([tr.doctype_post_1a, tr.doctype_post_2])
         for e in expected['results']:
             if e['jira_temp'] is not None and len(e['jira_temp']) > 0 \
                 and settings.JIRA_URI is not None and len(settings.JIRA_URI) > 0:
@@ -246,9 +258,9 @@ class ConfTest(SpecTestCase):
         # List all doctypes with 'Op' in descr to a csv
         r1 = expected['results'][0]
         r2 = expected['results'][1]
-        expected=f'''name,descr,confidential,jira_temp,sunset_interval,sunset_warn,jira_temp_url_base
-{r1["name"]},{r1["descr"]},{r1["confidential"]},{r1["jira_temp"]},{r1["sunset_interval"] if r1["sunset_interval"] else ''},{r1["sunset_warn"] if r1["sunset_warn"] else ''},{settings.JIRA_URI}/browse/
-{r2["name"]},{r2["descr"]},{r2["confidential"]},{r2["jira_temp"]},{r2["sunset_interval"] if r2["sunset_interval"] else ''},{r2["sunset_warn"] if r2["sunset_warn"] else ''},{settings.JIRA_URI}/browse/
+        expected=f'''name,descr,confidential,jira_temp,sunset_interval,sunset_warn,active,jira_temp_url_base
+{r1["name"]},{r1["descr"]},{r1["confidential"]},{r1["jira_temp"]},{r1["sunset_interval"] if r1["sunset_interval"] else ''},{r1["sunset_warn"] if r1["sunset_warn"] else ''},{r1["active"]},{settings.JIRA_URI}/browse/
+{r2["name"]},{r2["descr"]},{r2["confidential"]},{r2["jira_temp"]},{r2["sunset_interval"] if r2["sunset_interval"] else ''},{r2["sunset_warn"] if r2["sunset_warn"] else ''},{r2["active"]},{settings.JIRA_URI}/browse/
 '''
         response = self.get_request('/doctype/?descr=Op&output_csv=true')
         self.assertEqual(response.status_code, 200)
@@ -373,30 +385,30 @@ class ConfTest(SpecTestCase):
         response = self.post_request('/doctype/', tr.doctype_post_3, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 201)
 
-        am_ids = []
         response = self.post_request('/approvalmatrix/', tr.approvalmatrix_post_1, auth_lvl='USER')
         self.assert_auth_error(response, 'PERM_DENIED')
 
         response = self.post_request('/approvalmatrix/', tr.approvalmatrix_post_1, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 201)
+        response = self.get_request('/approvalmatrix/?department=__Generic__')
+        self.assertEqual(response.status_code, 200)
         resp = json.loads(response.content)
-        am_ids.append(resp['id'])
+        r0_id = copy.deepcopy(resp['results'][0]["id"])
 
         response = self.post_request('/approvalmatrix/', tr.approvalmatrix_post_2, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 201)
-        resp = json.loads(response.content)
-        am_ids.append(resp['id'])
 
         response = self.post_request('/approvalmatrix/', tr.approvalmatrix_post_3, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 201)
-        resp = json.loads(response.content)
-        am_ids.append(resp['id'])
 
-        # Duplicate
+        # Duplicate - Treats as an update
         response = self.post_request('/approvalmatrix/', tr.approvalmatrix_post_1, auth_lvl='ADMIN')
+        self.assertEqual(response.status_code, 201)
+
+        # Error: Update approvalmatrix with signRoles as an object (not a str)
+        response = self.post_request(f'/approvalmatrix/', tr.approvalmatrix_put_err_1, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 400)
-        resp = json.loads(response.content)
-        self.assertIn('The fields doc_type, department must make a unique set.', str(response.content))
+        self.assert_schema_err(response.content, 'signRoles')
 
         # List all approvalmatrixs with 'Op' in dept
         response = self.get_request('/approvalmatrix/?department=Ops')
@@ -420,58 +432,61 @@ class ConfTest(SpecTestCase):
         self.assertEqual(expected,  stream.decode().replace('\r',''))
 
         # Error: Update approvalmatrix with signRoles as an object (not a str)
-        response = self.put_request(f'/approvalmatrix/{am_ids[0]}', tr.approvalmatrix_put_err_1, auth_lvl='ADMIN')
+        response = self.put_request(f'/approvalmatrix/{r0_id}', tr.approvalmatrix_put_err_1, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 400)
         self.assert_schema_err(response.content, 'signRoles')
 
         # Error: Update approvalmatrix with BadDocType
-        response = self.put_request(f'/approvalmatrix/{am_ids[0]}', tr.approvalmatrix_put_err_2, auth_lvl='ADMIN')
+        response = self.put_request(f'/approvalmatrix/{r0_id}', tr.approvalmatrix_put_err_2, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 400)
         resp = json.loads(response.content)
         self.assertEqual(resp['error'], 'Document Type: BadDocType does not exist.')
 
         # Error: Update approvalmatrix with BadDept
-        response = self.put_request(f'/approvalmatrix/{am_ids[0]}', tr.approvalmatrix_put_err_3, auth_lvl='ADMIN')
+        response = self.put_request(f'/approvalmatrix/{r0_id}', tr.approvalmatrix_put_err_3, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 400)
         resp = json.loads(response.content)
         self.assertEqual(resp['error'], 'Department: BadDept does not exist.')
 
         # Error: Update approvalmatrix with BadRole
-        response = self.put_request(f'/approvalmatrix/{am_ids[0]}', tr.approvalmatrix_put_err_4, auth_lvl='ADMIN')
+        response = self.put_request(f'/approvalmatrix/{r0_id}', tr.approvalmatrix_put_err_4, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 400)
         resp = json.loads(response.content)
         self.assertEqual(resp['error'], 'Role: BadRole does not exist.')
 
         # Update approvalmatrix
-        response = self.put_request(f'/approvalmatrix/{am_ids[0]}', tr.approvalmatrix_put_1, auth_lvl='ADMIN')
+        response = self.put_request(f'/approvalmatrix/{r0_id}', tr.approvalmatrix_put_1, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 200)
 
         # Get updated approvalmatrix
-        response = self.get_request(f'/approvalmatrix/{am_ids[0]}')
+        response = self.get_request(f'/approvalmatrix/{r0_id}')
         self.assertEqual(response.status_code, 200)
         resp = json.loads(response.content)
         resp = self.delete_attribs(resp, ['id'])
         self.assertEqual(resp, tr.approvalmatrix_put_1)
 
         # Error: permissions
-        response = self.delete_request(f'/approvalmatrix/{am_ids[0]}')
+        response = self.delete_request(f'/approvalmatrix/{r0_id}')
         self.assert_auth_error(response, 'NO_AUTH')
-        response = self.delete_request(f'/approvalmatrix/{am_ids[0]}', auth_lvl='USER')
+        response = self.delete_request(f'/approvalmatrix/{r0_id}', auth_lvl='USER')
         self.assert_auth_error(response, 'PERM_DENIED')
 
         # Delete updated approvalmatrix
-        response = self.delete_request(f'/approvalmatrix/{am_ids[0]}', auth_lvl='ADMIN')
+        response = self.delete_request(f'/approvalmatrix/{r0_id}', auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 204)
 
         # Get deleted approvalmatrix
-        response = self.get_request(f'/approvalmatrix/{am_ids[0]}')
+        response = self.get_request(f'/approvalmatrix/{r0_id}')
         self.assertEqual(response.status_code, 400)
         resp = json.loads(response.content)
-        self.assertEqual(resp['error'], f"ApprovalMatrix ({am_ids[0]}) does not exist.")
+        self.assertEqual(resp['error'], f'ApprovalMatrix ({r0_id}) does not exist.')
 
     def test_roleSpecOne(self):
         response = self.post_request('/role/', tr.role_post_4, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 201)
+
+        response = self.get_request(f'/role/{tr.role_post_4["role"]}', auth_lvl='ADMIN')
+        self.assertEqual(response.status_code, 200)
         resp = json.loads(response.content)
         self.assertEqual(resp['spec_one'], True)
 
@@ -494,11 +509,9 @@ class ConfTest(SpecTestCase):
         response = self.post_request('/loc/', tr.loc_post_3, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 201)
 
-        # Duplicate
-        response = self.post_request('/loc/', tr.loc_post_1, auth_lvl='ADMIN')
-        self.assertEqual(response.status_code, 400)
-        resp = json.loads(response.content)
-        self.assertIn('already exists', str(response.content))
+        # Duplicate - Performs an update
+        response = self.post_request('/loc/', tr.loc_post_2a, auth_lvl='ADMIN')
+        self.assertEqual(response.status_code, 201)
 
         # Get location detail
         response = self.get_request(f'/loc/{tr.loc_post_1["name"]}')
@@ -524,15 +537,15 @@ class ConfTest(SpecTestCase):
         response = self.get_request('/loc/?name=Corporate')
         self.assertEqual(response.status_code, 200)
         resp = json.loads(response.content)
-        expected = self.paginate_results([tr.loc_post_1, tr.loc_post_2])
+        expected = self.paginate_results([tr.loc_post_1, tr.loc_post_2a])
         self.assertEqual(resp, expected)
 
         # List all locs with 'Corporate' in name to a csv
         r1 = expected['results'][0]
         r2 = expected['results'][1]
-        expected=f'''name
-{r1["name"]}
-{r2["name"]}
+        expected=f'''name,active
+{r1["name"]},{r1["active"]}
+{r2["name"]},{r2["active"]}
 '''
         response = self.get_request('/loc/?name=Corporate&output_csv=true')
         self.assertEqual(response.status_code, 200)
@@ -545,6 +558,21 @@ class ConfTest(SpecTestCase):
         self.assert_auth_error(response, 'NO_AUTH')
         response = self.delete_request(f'/loc/{tr.loc_post_1["name"]}', auth_lvl='USER')
         self.assert_auth_error(response, 'PERM_DENIED')
+
+        # Update location
+        response = self.put_request(f'/loc/{tr.loc_put_1["name"]}', tr.loc_put_1, auth_lvl='ADMIN')
+        self.assertEqual(response.status_code, 200)
+
+        # Get location detail
+        response = self.get_request(f'/loc/{tr.loc_put_1["name"]}')
+        self.assertEqual(response.status_code, 200)
+        resp = json.loads(response.content)
+        self.assertEqual(resp, tr.loc_put_1)
+
+        # Error: Update doctype with active as a number
+        response = self.put_request(f'/loc/{tr.loc_err_1["name"]}', tr.loc_err_1, auth_lvl='ADMIN')
+        self.assertEqual(response.status_code, 400)
+        self.assert_schema_err(response.content, 'active')
 
         # Delete updated loc
         response = self.delete_request(f'/loc/{tr.loc_post_1["name"]}', auth_lvl='ADMIN')

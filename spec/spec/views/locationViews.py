@@ -1,3 +1,4 @@
+import collections.abc
 import re
 from django.db import transaction
 from proj.util import IsSuperUserOrReadOnly
@@ -12,7 +13,7 @@ from utils import qsUtil
 from utils.dev_utils import formatError
 
 from ..models import  Location
-from ..serializers.locationSerializers import LocationSerializer, LocationPostSerializer
+from ..serializers.locationSerializers import LocationPutSerializer, LocationSerializer, LocationPostSerializer
 
 class LocationList(APIView):
     """
@@ -33,7 +34,7 @@ class LocationList(APIView):
             locations = qsUtil.qsFilter(
                 locations,
                 request.GET,
-                ['name', ],
+                ['name', {"f": "active", "t": bool}, ],
                 ["name"],
             )
 
@@ -51,14 +52,23 @@ class LocationList(APIView):
     def post(self, request, *args, **kwargs):
         try:
             with transaction.atomic():
-                serializer = LocationPostSerializer(data=request.data)
-                if not serializer.is_valid():
-                    raise ValidationError({"errorCode":"SPEC-LC03", "error": "Invalid message format", "schemaErrors":serializer.errors})
-                if re.search(r'[^-a-zA-Z0-9_: ,]+',serializer.validated_data["name"]):
-                    raise ValidationError({"errorCode":"SPEC-LC02", "error": "Location names cannot contain special characters, including: tab, semicolon and slash"})
-                location = serializer.save()
-            serializer = LocationSerializer(location)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+                req = request.data
+                if not isinstance(req, collections.abc.Sequence):
+                    req = [req]
+                for r in req:
+                    location = None
+                    if 'name' in r:
+                        location = Location.objects.filter(name=r['name']).first()
+                    if location:
+                        serializer = LocationPutSerializer(location, data=r)
+                    else:
+                        serializer = LocationPostSerializer(location, data=r)
+                    if not serializer.is_valid():
+                        raise ValidationError({"errorCode":"SPEC-LC03", "error": "Invalid message format", "schemaErrors":serializer.errors})
+                    if re.search(r'[^-a-zA-Z0-9_:]+',r["name"]):
+                        raise ValidationError({"errorCode":"SPEC-LC02", "error": "Location names cannot contain special characters, including: tab, semicolon and slash"})
+                    location = serializer.save()
+            return Response(status=status.HTTP_201_CREATED)
         except BaseException as be: # pragma: no cover
             formatError(be, "SPEC-LC04")
 
@@ -68,6 +78,14 @@ class LocationDetail(APIView):
     get:
     loc/<loc>
     Return details of specific location
+
+    put:
+    loc/<loc>
+    Update <loc>
+
+    {
+        "roles": "role1, role3"
+    }
 
     delete:
     loc/<loc>
@@ -81,6 +99,19 @@ class LocationDetail(APIView):
             return Response(serializer.data)
         except BaseException as be: # pragma: no cover
             formatError(be, "SPEC-LC06")
+
+    def put(self, request, loc, format=None):
+        try:
+            with transaction.atomic():
+                location = Location.lookup(loc)
+                serializer = LocationPutSerializer(location, data=request.data)
+                if not serializer.is_valid():
+                    raise ValidationError({"errorCode":"SPEC-DTV07", "error": "Invalid message format", "schemaErrors":serializer.errors})
+                location = serializer.save()
+            serializer = LocationSerializer(location)
+            return Response(serializer.data)
+        except BaseException as be: # pragma: no cover
+            formatError(be, "SPEC-DTV08")
 
     def delete(self, request, loc, format=None):
         try:

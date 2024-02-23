@@ -1,3 +1,4 @@
+import collections.abc
 import re
 from django.db import transaction
 from proj.util import IsSuperUserOrReadOnly
@@ -37,7 +38,7 @@ class DocTypeList(APIView):
             doc_types = qsUtil.qsFilter(
                 doc_types,
                 request.GET,
-                ['name', 'descr', 'jira_temp', {"f": "confidential", "t": bool}],
+                ['name', 'descr', 'jira_temp', {"f": "confidential", "t": bool}, {"f": "active", "t": bool}],
                 ["name"],
             )
 
@@ -55,14 +56,23 @@ class DocTypeList(APIView):
     def post(self, request, *args, **kwargs):
         try:
             with transaction.atomic():
-                serializer = DocTypeSerializer(data=request.data)
-                if not serializer.is_valid():
-                    raise ValidationError({"errorCode":"SPEC-DTV03", "error": "Invalid message format", "schemaErrors":serializer.errors})
-                if re.search(r'[^-a-zA-Z0-9_:]+',serializer.validated_data["name"]):
-                    raise ValidationError({"errorCode":"SPEC-DTV02", "error": "Document Type names cannot contain special characters, including: space, comma, tab, semicolon and slash"})
-                doctype = serializer.save()
-            serializer = DocTypeSerializer(doctype)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+                req = request.data
+                if not isinstance(req, collections.abc.Sequence):
+                    req = [req]
+                for r in req:
+                    doctype = None
+                    if 'name' in r:
+                        doctype = DocType.objects.filter(name=r['name']).first()
+                    if doctype:
+                        serializer = DocTypePutSerializer(doctype, data=r)
+                    else:
+                        serializer = DocTypeSerializer(doctype, data=r)
+                    if not serializer.is_valid():
+                        raise ValidationError({"errorCode":"SPEC-DTV03", "error": "Invalid message format", "schemaErrors":serializer.errors})
+                    if re.search(r'[^-a-zA-Z0-9_:]+',r["name"]):
+                        raise ValidationError({"errorCode":"SPEC-DTV02", "error": "Document Type names cannot contain special characters, including: space, comma, tab, semicolon and slash"})
+                    doctype = serializer.save()
+            return Response(status=status.HTTP_201_CREATED)
         except BaseException as be: # pragma: no cover
             formatError(be, "SPEC-DTV04")
 

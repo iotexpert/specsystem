@@ -350,6 +350,25 @@ class SpecTest(SpecTestCase):
         resp = json.loads(response.content)
         self.assertEqual(resp['state'], 'Obsolete')
 
+        # Test setting Obsolete from Spec list call
+        # Clear sunset on Doc Type WI
+        response = self.put_request('/doctype/WI', conf.doctype_post_1, auth_lvl='ADMIN')
+        self.assertEqual(response.status_code, 200)
+        # Reimport as WI but does not set state Obsolete
+        response = self.post_request('/importSpec/', spec_import, auth_lvl='ADMIN')
+        self.assertEqual(response.status_code, 201)
+        resp = json.loads(response.content)
+        self.assertEqual(resp['state'], 'Active')
+        # Update Doc Type WI with sunset
+        response = self.put_request('/doctype/WI', conf.doctype_post_2, auth_lvl='ADMIN')
+        self.assertEqual(response.status_code, 200)
+        # Retrieve list, setting state to Obsolete
+        response = self.get_request(f'/spec/?num={spec_import["num"]}', auth_lvl='USER')
+        self.assertEqual(response.status_code, 200)
+        resp = json.loads(response.content)
+        self.assertEqual(resp['count'], 1)
+        self.assertEqual(resp["results"][0]["state"], 'Obsolete')
+
         # Reset the state to Active to hit a specific branch of spec.models.lookup()
         specToUpdate = Spec.objects.get(num=spec_ids[1], ver='A')
         specToUpdate.state = 'Active'

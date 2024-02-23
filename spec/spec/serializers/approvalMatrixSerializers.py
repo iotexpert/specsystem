@@ -17,12 +17,12 @@ class ApprovalMatrixSerializer(serializers.ModelSerializer):
 
 class ApprovalMatrixPostSerializer(serializers.ModelSerializer):
     doc_type = serializers.CharField(required=False)
-    department = serializers.CharField(required=False, default=None, allow_blank=True)
-    signRoles = serializers.CharField(required=False, default=None, allow_blank=True)
+    department = serializers.CharField(required=False, default=None, allow_blank=True, allow_null=True)
+    signRoles = serializers.CharField(required=False, default=None, allow_blank=True, allow_null=True)
     class Meta:
         model = ApprovalMatrix
         fields = ('id', 'doc_type', 'department', 'signRoles',  )
-    
+
     def create(self, validated_data):
         sign_role_data = validated_data.pop("signRoles")
         validated_data['doc_type'] = DocType.lookup(validated_data['doc_type'])
@@ -40,12 +40,12 @@ class ApprovalMatrixPostSerializer(serializers.ModelSerializer):
 
 class ApprovalMatrixUpdateSerializer(serializers.ModelSerializer):
     doc_type = serializers.CharField(required=False)
-    department = serializers.CharField(required=False, default=None, allow_blank=True)
-    signRoles = serializers.CharField(required=False, default=None, allow_blank=True)
+    department = serializers.CharField(required=False, default=None, allow_blank=True, allow_null=True)
+    signRoles = serializers.CharField(required=False, default=None, allow_blank=True, allow_null=True)
     class Meta:
         model = ApprovalMatrix
         fields = ('id', 'doc_type', 'department', 'signRoles',  )
-    
+
     def update(self, apvl_mt, validated_data):
         sign_role_data = validated_data.pop("signRoles")
         validated_data['doc_type'] = DocType.lookup(validated_data['doc_type'])

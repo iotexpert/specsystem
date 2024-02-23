@@ -29,6 +29,7 @@ class DocType(models.Model):
     jira_temp = models.CharField(max_length=4000, blank=True, null=True)
     sunset_interval = models.DurationField(blank=True, null=True)
     sunset_warn = models.DurationField(blank=True, null=True)
+    active = models.BooleanField(default=True, blank=True)
 
     class Meta:
         managed = True
@@ -56,6 +57,7 @@ class Role(models.Model):
     role = models.CharField(primary_key=True, max_length=50)
     descr = models.CharField(max_length=4000, blank=True, null=True)
     spec_one = models.BooleanField(default=True, blank=True)
+    active = models.BooleanField(default=True, blank=True)
 
     class Meta:
         managed = True
@@ -90,6 +92,7 @@ class RoleUser(models.Model):
 
 class Department(models.Model):
     name = models.CharField(primary_key=True, max_length=150)
+    active = models.BooleanField(default=True, blank=True)
 
     class Meta:
         managed = True
@@ -194,6 +197,7 @@ class ApprovalMatrixSignRole(models.Model):
 
 class Location(models.Model):
     name = models.CharField(primary_key=True, max_length=150)
+    active = models.BooleanField(default=True, blank=True)
 
     class Meta:
         managed = True

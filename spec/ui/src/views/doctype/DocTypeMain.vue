@@ -20,12 +20,19 @@
         </template>
 
         <template v-slot:top-right>
-          <q-btn dense v-show="isAdmin" color="primary" @click="add_doctype = true" icon="add" data-cy="add-row" label="Add Doctype" no-caps/>
-          &nbsp;
-          <q-btn dense color="primary" @click=" toCSV() " target="_blank" icon="file_download" data-cy="open-file">
-            <q-tooltip>Download to CSV</q-tooltip>
-          </q-btn>
+            <q-card-section class="q-pt-none">
+                <label>Bulk Update / Insert</label><br/>
+                <input type="file"  @change="loadTextFromFile" v-show="isAdmin" name="inputFile"  ref="inputFile" accept="file/csv" />
+            </q-card-section>
+            <q-card-section class="q-pt-none">
+                <q-btn dense v-show="isAdmin" color="primary" @click="add_doctype = true" icon="add" data-cy="add-row" label="Add Doctype" no-caps/>
+                &nbsp;
+                <q-btn dense color="primary" @click=" toCSV() " target="_blank" icon="file_download" data-cy="open-file">
+                <q-tooltip>Download to CSV</q-tooltip>
+                </q-btn>
+            </q-card-section>
         </template>
+
 
         <template v-slot:top-row>
           <q-tr v-show=" filterShow ">
@@ -61,14 +68,23 @@
         />
       </q-dialog>
     </div>
+
+    <q-dialog v-model=" waiting " no-esc-dismiss no-backdrop-dismiss>
+      <q-card>
+        <q-card-section>
+        <h4>Updating system. Please wait</h4>
+        <br />
+        <p>Do not refresh the page.</p>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
 <script>
+import { deleteData, postData, } from "@/utils.js";
 import { qtCsvLink, qtFilterValue, qtOnRequest } from "@/qtable-incl.js"
-import { deleteData } from "@/utils.js";
-
-import { ref, onMounted, computed } from "vue";
+import { computed, onMounted, ref, watch, } from 'vue'
 import { useStore } from "vuex";
 import CreateDoctypeDialog from "@/views/doctype/CreateDoctype.vue";
 
@@ -101,8 +117,12 @@ const url = 'doctype/';
 const store = useStore();
 
 const add_doctype = ref(false);
+const csvReadFromFile = ref(null)
+const csvRows = ref([]);
 const doctypeRow = ref();
+const inputFile = ref();
 const upd_doctype = ref(false);
+const waiting = ref(false);
 
 const isAdmin = ref(computed(() => store.getters.isAdmin));
 
@@ -136,6 +156,59 @@ async function deleteSelected(doctype) {
 async function updateSelected(row) {
   doctypeRow.value = row;
   upd_doctype.value = true;
+}
+
+async function loadTextFromFile(ev) {
+  const file = ev.target.files[0];
+  const reader = new FileReader();
+
+  reader.onload = e => csvReadFromFile.value = e.target.result;
+  reader.readAsText(file);
+}
+watch(csvReadFromFile, (newVal, oldVal) => {
+  if (newVal) {
+    csvRows.value = [];
+    const re = /(?:,|\n|^)("(?:(?:"")*[^"]*)*"|[^",\n]*|(?:\n|$))/  // find a cell in the row
+    const re2 = /^"(.*)"$/ // Remove wrapping double quotes around a cell
+    let offset = 0;
+    let row = [];
+    let csv_rows = [];
+    while (offset < csvReadFromFile.value.length) {
+      let r = csvReadFromFile.value.slice(offset).match(re);
+      offset += r[0].length;
+      if (r[0].startsWith('\n')) { csv_rows.push(row); row = []; }
+      let v = r[1].trim()
+      v = v.replace(re2, '$1')
+      row.push(v.trim())
+    }
+    if (row.length) { csv_rows.push(row); }
+    for (let r of csv_rows.slice(1)) {
+      if (!r[0]) {continue}
+      let b = {};
+      for (let c = 0; c < csv_rows[0].length; c++) {
+        b[csv_rows[0][c]] = r[c]?r[c]:null;
+      }
+      csvRows.value.push(b)
+    }
+    csvReadFromFile.value = null;
+    inputFile.value.value = '';
+    save();
+  }
+});
+
+async function save() {
+  try {
+    waiting.value = true
+
+    let res = {};
+    if (csvRows.value.length) {
+      res = await postData('doctype/', csvRows.value, 'Doc Types updated.')
+    }
+  }
+  finally {
+    waiting.value = false
+  }
+  tableRef.value.requestServerInteraction();
 }
 
 // Wrappers for qtable-incl functions
@@ -211,6 +284,16 @@ const columns = [
     style: "width: 15em;",
     sortable: false,
     skip_filter: true,
+  },
+  {
+    name: "active",
+    align: "center",
+    label: "Active",
+    field: "active",
+    classes: "tab page-col",
+    headerStyle: "font-size:large;",
+    style: "width: 15em;",
+    sortable: true,
   },
 ];
 </script>

@@ -1,4 +1,4 @@
-import re
+import collections.abc
 from django.db import transaction
 from proj.util import IsSuperUserOrReadOnly
 from rest_framework import status
@@ -55,12 +55,25 @@ class ApprovalMatrixList(APIView):
     def post(self, request, *args, **kwargs):
         try:
             with transaction.atomic():
-                serializer = ApprovalMatrixPostSerializer(data=request.data)
-                if not serializer.is_valid():
-                    raise ValidationError({"errorCode":"SPEC-AV02", "error": "Invalid message format", "schemaErrors":serializer.errors})
-                ApprovalMatrix = serializer.save()
-            serializer = ApprovalMatrixSerializer(ApprovalMatrix)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+                req = request.data
+                if not isinstance(req, collections.abc.Sequence):
+                    req = [req]
+                for r in req:
+                    apvl_mt = None
+                    if 'doc_type' in r and  'department' in r:
+                        apvl_mt = ApprovalMatrix.objects.filter(doc_type=r['doc_type'], department=r['department']).first()
+                    if apvl_mt:
+                        serializer = ApprovalMatrixUpdateSerializer(apvl_mt, data=r)
+                    else:
+                        serializer = ApprovalMatrixPostSerializer(apvl_mt, data=r)
+                    if not serializer.is_valid():
+                        raise ValidationError({"errorCode":"SPEC-AV02", "error": "Invalid message format", "schemaErrors":serializer.errors})
+                    if not serializer.validated_data['signRoles']:
+                        if apvl_mt:
+                            apvl_mt.delete()
+                    else:
+                        apvl_mt = serializer.save()
+            return Response(status=status.HTTP_201_CREATED)
         except BaseException as be: # pragma: no cover
             formatError(be, "SPEC-AV03")
 
