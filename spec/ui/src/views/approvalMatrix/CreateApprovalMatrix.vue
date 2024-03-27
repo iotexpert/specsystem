@@ -2,7 +2,7 @@
   <q-card class="dialog-window">
         <q-card-section class="bg-primary text-white row ">
             <div class="text-h4">{{props.createMode?'Create':'Update '}} Approval Matrix</div>
-            <q-btn icon="close" flat round dense data-cy="token-create-close" v-close-popup /> 
+            <q-btn icon="close" flat round dense data-cy="token-create-close" v-close-popup />
         </q-card-section>
         <q-card-section class="q-pt-none">
             <q-select
@@ -41,7 +41,7 @@ export default {
 }
 </script>
 
-<script setup>    
+<script setup>
     const props = defineProps({
         ApprovalMatrixRow: Object,
         createMode: Boolean,
@@ -89,10 +89,10 @@ export default {
     })
 
     async function loadLists() {
-        let data_rows = await retrieveData('doctype/?limit=1000');
+        let data_rows = await retrieveData('doctype/?active=true&limit=1000');
         doc_typeList.value = data_rows['results'].map((e) => {return ({label:e['name'],value:e['name']})})
-        
-        data_rows = await retrieveData('dept/?limit=1000');
+
+        data_rows = await retrieveData('dept/?active=true&limit=1000');
         deptList.value = data_rows['results'].map((e) => {return ({label:e['name'],value:e['name']})})
     }
 </script>

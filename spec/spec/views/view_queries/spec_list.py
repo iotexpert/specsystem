@@ -1,5 +1,7 @@
+import datetime
 import json
 from rest_framework import serializers
+from spec.models import Spec
 from utils.raw_sql import RawSQLQuerySet
 
 
@@ -78,5 +80,10 @@ def getSpecListQuerySet(reqDict) -> RawSQLQuerySet:
 
 class SpecListSerializer(serializers.Serializer):
     def to_representation(self, instance):
+        # If the spec is Active but past the sunset date, make it Obsolete
+        if instance['state'] == 'Active' and instance['sunset_dt'] is not None and instance['sunset_dt'] < datetime.datetime.utcnow().isoformat():
+            spec = Spec.objects.get(num=instance['num'])
+            spec.checkSunset()
+            instance['state'] = 'Obsolete'
         return instance
 

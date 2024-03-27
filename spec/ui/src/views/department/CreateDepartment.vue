@@ -2,11 +2,14 @@
   <q-card class="dialog-window">
         <q-card-section class="bg-primary text-white row ">
             <div class="text-h4">{{props.createMode?'Create':'Update '+props.departmentRow['name']}} Department</div>
-            <q-btn icon="close" flat round dense data-cy="token-create-close" v-close-popup /> 
+            <q-btn icon="close" flat round dense data-cy="token-create-close" v-close-popup />
         </q-card-section>
         <q-card-section class="q-pt-none">
             <q-input label="Name" v-model.trim="department" v-show="props.createMode" data-cy="department-create-department"/>
             <q-input label="Read Roles" v-model.trim="readRoles" data-cy="readroles-create-department"/>
+            <q-select label="Active" v-model="active"
+                :options="[{label:'True',value:true}, {label:'False',value:false}]"
+                data-cy="active-create-department"/>
         </q-card-section>
 
         <q-card-actions class="bg-white text-teal" align="center">
@@ -26,7 +29,7 @@ export default {
 }
 </script>
 
-<script setup>    
+<script setup>
     const props = defineProps({
         departmentRow: Object,
         createMode: Boolean,
@@ -34,6 +37,7 @@ export default {
 
     const emit = defineEmits(['updateTable'])
 
+    const active = ref({label:'True',value:true})
     const department = ref('')
     const readRoles = ref('')
 
@@ -41,6 +45,7 @@ export default {
         const body = {
             name: department.value,
             readRoles: readRoles.value,
+            active: active.value.value,
         }
 
         if (props.createMode) {
@@ -61,6 +66,7 @@ export default {
         if (props.departmentRow['name'] !== undefined) {
             department.value = props.departmentRow['name']
             readRoles.value = props.departmentRow['readRoles']
+            if (props.departmentRow['active']) {active.value = {label:'True',value:true}} else {active.value={label:'False',value:false}}
         }
     })
 </script>

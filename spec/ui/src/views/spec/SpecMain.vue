@@ -100,7 +100,7 @@
 
 <script>
 import { qtCsvLink, qtOnRequest } from "@/qtable-incl.js"
-import { apiServerHost, deleteData, postData } from "@/utils.js";
+import { apiServerHost, deleteData, dispDate, postData } from "@/utils.js";
 
 import { ref, onMounted, computed, } from "vue";
 import { useStore } from "vuex";
