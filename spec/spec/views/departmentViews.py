@@ -1,3 +1,4 @@
+import collections.abc
 import re
 from django.db import transaction
 from proj.util import IsSuperUserOrReadOnly
@@ -34,7 +35,7 @@ class DepartmentList(APIView):
             depts = qsUtil.qsFilter(
                 depts,
                 request.GET,
-                ['name', ],
+                ['name', {"f": "active", "t": bool}, ],
                 ["name"],
             )
 
@@ -52,14 +53,23 @@ class DepartmentList(APIView):
     def post(self, request, *args, **kwargs):
         try:
             with transaction.atomic():
-                serializer = DepartmentPostSerializer(data=request.data)
-                if not serializer.is_valid():
-                    raise ValidationError({"errorCode":"SPEC-DV03", "error": "Invalid message format", "schemaErrors":serializer.errors})
-                if re.search(r'[^-a-zA-Z0-9_:]+',serializer.validated_data["name"]):
-                    raise ValidationError({"errorCode":"SPEC-DV02", "error": "Department names cannot contain special characters, including: space, comma, tab, semicolon and slash"})
-                department = serializer.save()
-            serializer = DepartmentSerializer(department)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+                req = request.data
+                if not isinstance(req, collections.abc.Sequence):
+                    req = [req]
+                for r in req:
+                    department = None
+                    if 'name' in r:
+                        department = Department.objects.filter(name=r['name']).first()
+                    if department:
+                        serializer = DepartmentUpdateSerializer(department, data=r)
+                    else:
+                        serializer = DepartmentPostSerializer(department, data=r)
+                    if not serializer.is_valid():
+                        raise ValidationError({"errorCode":"SPEC-DV03", "error": "Invalid message format", "schemaErrors":serializer.errors})
+                    if re.search(r'[^-a-zA-Z0-9_:]+',r["name"]):
+                        raise ValidationError({"errorCode":"SPEC-DV02", "error": "Department names cannot contain special characters, including: space, comma, tab, semicolon and slash"})
+                    department = serializer.save()
+            return Response(status=status.HTTP_201_CREATED)
         except BaseException as be: # pragma: no cover
             formatError(be, "SPEC-DV04")
 
