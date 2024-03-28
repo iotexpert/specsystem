@@ -545,13 +545,13 @@
             <span class="text-h6">Files:</span>
           </template>
           <template v-slot:header>
-            <q-th v-show="edit" />
-            <q-th align="left">File Name</q-th>
-            <q-th align="left">Add to PDF</q-th>
+            <q-th/>
+            <q-th align="left" v-if="gen_pdf">Add to PDF</q-th>
           </template>
           <template v-slot:body="tprops">
             <q-tr>
-              <q-td v-show="edit">
+              <q-td>
+              <span v-show="edit" style="margin-right: 1vw;">
                 <q-btn
                   round
                   color="negative"
@@ -577,8 +577,8 @@
                   dense
                   data-cy="file-move-down-btn"
                 ></q-btn>
-              </q-td>
-              <q-td>
+              </span>
+              <span>
                 <a
                   :href="
                     apiServerHost +
@@ -596,8 +596,9 @@
                 >
                   {{ tprops.row["filename"] }}
                 </a>
+              </span>
               </q-td>
-              <q-td>
+              <q-td v-if="gen_pdf">
                 <q-checkbox
                   v-if="disp_incl_pdf(tprops.row)"
                   v-model="tprops.row['incl_pdf']"
@@ -772,6 +773,7 @@ export default {
 const props = defineProps({
   num: String,
   ver: String,
+  gen_pdf: Boolean,
 });
 const store = useStore();
 

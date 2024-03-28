@@ -114,7 +114,7 @@
     </q-header>
 
     <q-page-container>
-      <router-view :key="route.fullPath"> </router-view>
+      <router-view :key="route.fullPath" :gen_pdf=gen_pdf> </router-view>
 
       <q-dialog v-model="login">
         <login-popup-page @close="login = false" />
@@ -150,13 +150,14 @@ const data_page = ref();
 
 const env_color = ref();
 const env_title_prefix = ref("");
+const gen_pdf = ref()
 
 const authenticated = ref(computed(() => store.getters.authenticated));
 const isAdmin = ref(computed(() => store.getters.isAdmin));
 const username = ref(computed(() => store.getters.username));
 
 if (!env_color.value) {
-  set_app_color();
+  set_env();
 }
 
 onMounted(() => {
@@ -181,9 +182,10 @@ watch(authenticated, (newVal, oldVal) => {
   }
 });
 
-async function set_app_color() {
+async function set_env() {
   let resp = await retrieveData("env/");
-  env_color.value = resp === "Testx" ? "glossy bg-purple" : "glossy bg-primary";
+  gen_pdf.value = !!resp.gen_pdf 
+  env_color.value = resp.env === "Test" ? "glossy bg-purple" : "glossy bg-primary";
   env_title_prefix.value = resp === "Testx" ? "Test Environment: " : "";
 }
 
