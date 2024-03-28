@@ -1,11 +1,13 @@
+import os
 from rest_framework.decorators import APIView
 from django.db import connection
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework import status
 from proj.util import IsSuperUser
-import os
 from utils.dev_utils import formatError
+from django.conf import settings
+
 
 
 class QaDbReset(APIView):
@@ -30,6 +32,6 @@ class Env(APIView):
 
     def get(self, request, format=None):
         try:
-            return Response(os.getenv('AD_SUFFIX', 'Prod'))
+            return Response({'env': os.getenv('AD_SUFFIX', 'Prod'), 'gen_pdf': settings.SOFFICE})
         except BaseException as be: # pragma: no cover
             formatError(be, "ENV-001")
