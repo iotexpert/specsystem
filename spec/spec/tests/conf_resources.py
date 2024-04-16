@@ -205,6 +205,12 @@ approvalmatrix_post_3 = {
     "signRoles": role_post_3['role']
 }
 
+approvalmatrix_post_3_delete = {
+    "doc_type": doctype_post_1['name'],
+    "department": dept_post_3['name'],
+    "signRoles": None
+}
+
 approvalmatrix_put_1 = {
     "doc_type": doctype_post_1['name'],
     "department": dept_post_0['name'],
