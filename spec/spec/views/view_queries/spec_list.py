@@ -82,7 +82,7 @@ class SpecListSerializer(serializers.Serializer):
     def to_representation(self, instance):
         # If the spec is Active but past the sunset date, make it Obsolete
         if instance['state'] == 'Active' and instance['sunset_dt'] is not None and instance['sunset_dt'] < datetime.datetime.utcnow().isoformat():
-            spec = Spec.objects.get(num=instance['num'])
+            spec = Spec.objects.get(num=instance['num'], ver=instance['ver'])
             spec.checkSunset()
             instance['state'] = 'Obsolete'
         return instance

@@ -431,6 +431,18 @@ class ConfTest(SpecTestCase):
         stream = b''.join(response.streaming_content)
         self.assertEqual(expected,  stream.decode().replace('\r',''))
 
+        # Delete with post
+        response = self.post_request(f'/approvalmatrix/', tr.approvalmatrix_post_3_delete, auth_lvl='ADMIN')
+        self.assertEqual(response.status_code, 201)
+
+        # List all approvalmatrixs with 'Op' in dept
+        response = self.get_request('/approvalmatrix/?department=Ops')
+        self.assertEqual(response.status_code, 200)
+        resp = json.loads(response.content)
+        resp['results'] = self.delete_list_attribs(resp['results'], ['id'])
+        expected = self.paginate_results([tr.approvalmatrix_post_2])
+        self.assertEqual(resp, expected)
+
         # Error: Update approvalmatrix with signRoles as an object (not a str)
         response = self.put_request(f'/approvalmatrix/{r0_id}', tr.approvalmatrix_put_err_1, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 400)
