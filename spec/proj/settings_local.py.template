@@ -26,6 +26,7 @@ os.environ['USER_USER'] = 'spec-user-test01'
 os.environ['USER_PASSWD'] = 'UserPasswd'
 
 os.environ['AD_SUFFIX'] = 'Test'
+os.environ['AD_ADMIN_GROUP'] = 'CN=SPEC-Admin-Test'
 
 # Settings for LDAP.
 AUTH_LDAP_SERVER_URI = "ldaps://company.local"
