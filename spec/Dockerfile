@@ -8,7 +8,6 @@ RUN echo "deb http://deb.debian.org/debian bookworm contrib non-free" > /etc/apt
 RUN  apt-get update \
   && apt-get install -y \
     build-essential \
-    default-jdk \
     gettext \
     libldap2-dev \
     libpq-dev \
@@ -21,21 +20,6 @@ RUN  apt-get update \
     unixodbc-dev \
     unixodbc \
     vim
-
-# Create link to jre/lib/amd64 for the pylucene build.
-WORKDIR /usr/lib/jvm/default-java/jre/lib
-RUN ln -s ../../lib amd64
-
-# Build PyLucene for document indexing
-WORKDIR /usr/src/pylucene
-RUN curl https://downloads.apache.org/lucene/pylucene/pylucene-9.4.1-src.tar.gz \
-    | tar -xz --strip-components=1
-RUN cd jcc \
-    && NO_SHARED=1 JCC_JDK=/usr/lib/jvm/default-java python setup.py install
-RUN make all install JCC='python -m jcc' ANT=ant PYTHON=python NUM_FILES=8
-# Once built, we don't have to keep the build environment in the final image
-WORKDIR /usr/src
-RUN rm -rf pylucene
 
 # This block loads the drivers required to make pyodbc and microsoft sql server work
 # It came from https://docs.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server?view=sql-server-ver16
