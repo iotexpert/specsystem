@@ -330,7 +330,7 @@ class SpecHist(models.Model):
 
 class SpecFile(models.Model):
     spec = models.ForeignKey(Spec, on_delete=models.CASCADE, related_name='files')
-    filename = models.CharField(max_length=4000)
+    filename = models.CharField(max_length=1000)
     file = models.FileField(blank=True, null=True)
     seq = models.IntegerField()
     incl_pdf = models.BooleanField(default=False)
@@ -338,7 +338,8 @@ class SpecFile(models.Model):
     class Meta:
         managed = True
         db_table = 'spec_file'
-        unique_together = (('spec', 'filename'),)
+        # MariaDB fails on this index
+        #unique_together = (('spec', 'filename'),)
 
     @staticmethod
     def lookup(num, ver, fileName, request):
