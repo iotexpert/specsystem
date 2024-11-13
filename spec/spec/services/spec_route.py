@@ -6,7 +6,7 @@ from django.conf import settings
 from django.core.files.base import File
 from django.core.mail import EmailMessage
 from rest_framework.exceptions import ValidationError
-from PyPDF2 import PdfFileMerger
+from PyPDF2 import PdfMerger
 from spec.models import Spec, SpecFile, SpecHist, UserWatch
 from subprocess import run
 from utils.dev_utils import formatError
@@ -35,7 +35,7 @@ def genPdf(spec):
 
         # Convert each file to pdf
         # Combine the file together
-        with PdfFileMerger() as merger:
+        with PdfMerger() as merger:
             for file in files:
                 if os.path.splitext(file.file.path)[1] == '.pdf':
                     merger.append(file.file.path)
@@ -99,7 +99,7 @@ def specSubmit(request, spec):
             comment = ''
         )
 
-        genPdf(spec)    
+        genPdf(spec)
         jira.submit(spec)
 
         to = spec.sigs.filter(signer__isnull=False,signer__email__isnull=False).values_list('signer__email', flat=True)
@@ -123,13 +123,13 @@ def specSign(request, spec, validated_data):
     try:
         if spec.state != 'Signoff':
             raise ValidationError({"errorCode":"SPEC-R06", "error": "Spec must be in Signoff state to accept signatures"})
-            
+
         sig = spec.sigs.filter(role__role=validated_data['role'], signer__username=validated_data['signer']).first()
         if sig is None:
             raise ValidationError({"errorCode":"SPEC-R11", "error": f"Spec does not have Role {validated_data['role']} / Signer {validated_data['signer']} entry."})
         if sig.delegate is not None:
             return spec # Already signed
-        
+
         if not request.user.is_superuser:
             # if a specific signer isn't specified, they must be in the users for the role, if any
             if sig.signer is None:
@@ -218,7 +218,7 @@ def specReject(request, spec, validated_data):
 
     # Remove the generated .pdf file
     SpecFile.objects.filter(spec=spec, filename=f"{spec.num}_{spec.ver}.pdf").delete()
-    
+
     SpecHist.objects.create(
         spec=spec,
         mod_ts = request._req_dt,

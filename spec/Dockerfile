@@ -1,25 +1,26 @@
-FROM nikolaik/python-nodejs:python3.10-nodejs16
+FROM nikolaik/python-nodejs:python3.10-nodejs18
 ENV APP=/app
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
-RUN sed -i 's/$/ contrib/' /etc/apt/sources.list \
-  && apt-get update \
+RUN echo "deb http://deb.debian.org/debian bookworm contrib non-free" > /etc/apt/sources.list.d/contrib.list
+
+RUN  apt-get update \
   && apt-get install -y \
     build-essential \
-    libpq-dev \
     gettext \
+    libldap2-dev \
+    libpq-dev \
+    libreoffice \
     libsasl2-dev \
     nginx \
-    python-dev \
-    libldap2-dev \
-    libreoffice \
     openssl \
+    python-dev-is-python3 \
     ttf-mscorefonts-installer \
     unixodbc-dev \
     unixodbc \
     vim
-    
+
 # This block loads the drivers required to make pyodbc and microsoft sql server work
 # It came from https://docs.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server?view=sql-server-ver16
 RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
@@ -31,7 +32,7 @@ RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
 # Set the working directory to /app
 WORKDIR $APP
 
-# Copy the current directory contents into the container at /app 
+# Copy the current directory contents into the container at /app
 ADD . $APP
 
 # Setup nginx

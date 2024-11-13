@@ -50,9 +50,11 @@ class MyLDAPBackend(LDAPBackend): # pragma nocover Requires LDAP configuration (
         user.is_superuser = False
         if 'memberOf' in user.ldap_user.attrs:
             for mo in user.ldap_user.attrs['memberOf']:
-                # if f"CN=SPEC-ReadAll-{os.environ['AD_SUFFIX']}".lower() in str(mo).lower():
-                #     user.is_staff = True
-                if f"CN=SPEC-Admin-{os.environ['AD_SUFFIX']}".lower() in str(mo).lower():
+                if "AD_ADMIN_GROUP" in os.environ: # Existing sites may not have added AD_ADMIN_GROUP to their settings_local.py
+                    admin_group = os.environ["AD_ADMIN_GROUP"].lower()
+                else:
+                    admin_group = f"CN=SPEC-Admin-{os.environ['AD_SUFFIX']}".lower()
+                if admin_group in str(mo).lower():
                     user.is_staff = True
                     user.is_superuser = True
         user.save()
