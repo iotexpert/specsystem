@@ -241,7 +241,7 @@ class RouteTest(SpecTestCase):
         self.assertGreater(resp["results"][0]["last_submit_dt"], resp["results"][0]["first_submit_dt"])
         self.assertEqual(1, resp["results"][0]["reject_cnt"])
         self.assertEqual(0, resp["results"][0]["admin_upd_cnt"])
-        self.assertEqual(resp["results"][0]["missing_sigs"], f"Op_Line1:{os.getenv('ADMIN_USER')}, Op:{os.getenv('ADMIN_USER')}")
+        self.assertEqual(resp["results"][0]["missing_sigs"], f"Op:{os.getenv('ADMIN_USER')}, Op_Line1:{os.getenv('ADMIN_USER')}")
 
         # Sign OP sig
         response = self.post_request(f'/sign/{spec_ids[0]}/A', spec.sign_post_2, auth_lvl='ADMIN')

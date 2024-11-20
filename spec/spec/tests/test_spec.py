@@ -632,7 +632,7 @@ class SpecTest(SpecTestCase):
         # Set to warn after two seconds
         response = self.put_request(f'/doctype/{spec.spec_post_1["doc_type"]}', conf.doctype_put_2, auth_lvl='ADMIN')
         self.assertEqual(response.status_code, 200)
-        time.sleep(2)
+        time.sleep(3)
 
         # Get sunset list
         response = self.get_request(f'/sunset/')
@@ -664,6 +664,13 @@ class SpecTest(SpecTestCase):
         # Extend sunset
         response = self.post_request(f'/extend/{spec_num}/A', {'comment': 'test sunset extension'}, auth_lvl='USER')
         self.assertEqual(response.status_code, 200)
+
+        # Get spec list with extended date
+        response = self.get_request(f'/spec/?spec_num={spec_num}', auth_lvl='USER')
+        self.assertEqual(response.status_code, 200)
+        resp = json.loads(response.content)
+        self.assertIsNotNone(resp['results'][0]['sunset_dt'])
+        self.assertGreater(resp['results'][0]['sunset_dt'], s["sunset_dt"])
 
         # Get sunset list
         response = self.get_request(f'/sunset/')
